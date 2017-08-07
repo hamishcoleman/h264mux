@@ -28,6 +28,82 @@ sub offset {
     return $self->{offset};
 }
 
+sub length_variable {
+    my $self = shift;
+    my $val = shift;
+    if (defined($val)) {
+        $self->{length_variable} = $val;
+    }
+    return $self->{length_variable};
+}
+
+sub length {
+    my $self = shift;
+    my $length_fixed = $self->length_fixed();
+    my $length_variable = $self->length_variable() || 0;
+    return $length_fixed + $length_variable;
+}
+
+sub to_string {
+    my $self = shift;
+
+    my $s = '';
+
+    my $offset = $self->offset();
+    if (defined($offset)) {
+        $s .= sprintf("0x%08x ",$offset);
+    }
+
+    $s .= ref($self);
+
+    return $s;
+}
+
+1;
+
+package MPEG::PS::header_len16;
+# a header with a 16bit length field
+use warnings;
+use strict;
+
+our @ISA = qw(MPEG::PS::header_base);
+
+sub length_fixed { 6; }
+
+sub read {
+    my $self = shift;
+    my $fh = shift;
+
+    $self->offset($fh->tell());
+
+    my $buf;
+    my $count = $fh->read($buf,$self->length_fixed());
+    if ($count != $self->length_fixed()) {
+        die("read size mismatch");
+    }
+
+    my @val = unpack('Nn',$buf);
+
+    die("bad magic") if ($val[0] != $self->sync_value());
+
+    my $h= {};
+    $self->length_variable($val[1]);
+
+    $count = $fh->read($buf,$self->length_variable());
+    if ($count != $self->length_variable()) {
+        die("read size mismatch");
+    }
+
+    @val = unpack('C*',$buf);
+
+    # TODO - where to decode this header?
+    @{$h->{_data}} = @val;
+
+    $self->{val} = $h;
+
+    return $self;
+}
+
 1;
 
 package MPEG::PS::header_01ba;
@@ -38,19 +114,17 @@ use strict;
 our @ISA = qw(MPEG::PS::header_base);
 
 sub sync_value { 0x1ba; }
+sub length_fixed { 14; }
 
 sub read {
     my $self = shift;
     my $fh = shift;
 
-    my $size = 14;
-    my $sync_hex = sprintf("0x%08x",$self->sync_value());
-
     $self->offset($fh->tell());
 
     my $buf;
-    my $count = $fh->read($buf,$size);
-    if ($count != $size) {
+    my $count = $fh->read($buf,$self->length_fixed());
+    if ($count != $self->length_fixed()) {
         die("read size mismatch");
     }
 
@@ -84,11 +158,10 @@ sub read {
         (($val[8] )) <<6 |
         (($val[9] >>2));
     # TODO - check the reserved bytes?
-    $h->{stuff_len} =
-        (($val[10]) & 0x7);
+    $self->length_variable((($val[10]) & 0x7));
 
-    $count = $fh->read($buf,$h->{stuff_len});
-    if ($count != $h->{stuff_len}) {
+    $count = $fh->read($buf,$self->length_variable());
+    if ($count != $self->length_variable()) {
         die("read size mismatch");
     }
     $h->{stuff_bytes} = $buf;
@@ -98,6 +171,14 @@ sub read {
     return $self;
 }
 
+sub to_string {
+    my $self = shift;
+
+    my $s = $self->SUPER::to_string();
+    $s .= sprintf(" scr=%i", $self->{val}{scr});
+    return $s;
+}
+
 1;
 
 package MPEG::PS::header_01bb;
@@ -105,46 +186,20 @@ package MPEG::PS::header_01bb;
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PS::header_base);
+our @ISA = qw(MPEG::PS::header_len16);
 
 sub sync_value { 0x1bb; }
 
-sub read {
-    my $self = shift;
-    my $fh = shift;
+1;
 
-    my $size = 6;
-    my $sync_hex = sprintf("0x%08x",$self->sync_value());
+package MPEG::PS::header_01bc;
+# a system header
+use warnings;
+use strict;
 
-    $self->offset($fh->tell());
+our @ISA = qw(MPEG::PS::header_len16);
 
-    my $buf;
-    my $count = $fh->read($buf,$size);
-    if ($count != $size) {
-        die("read size mismatch");
-    }
-
-    my @val = unpack('Nn',$buf);
-
-    die("bad magic") if ($val[0] != $self->sync_value());
-
-    my $h= {};
-    $h->{length} = $val[1];
-
-    $count = $fh->read($buf,$h->{length});
-    if ($count != $h->{length}) {
-        die("read size mismatch");
-    }
-
-    @val = unpack('C*',$buf);
-
-    # TODO - decode this header?
-    @{$h->{_data}} = @val;
-
-    $self->{val} = $h;
-
-    return $self;
-}
+sub sync_value { 0x1bc; }
 
 1;
 
@@ -210,6 +265,7 @@ sub read_header {
     my $headers = {
         0x1ba => 'MPEG::PS::header_01ba',
         0x1bb => 'MPEG::PS::header_01bb',
+        0x1bc => 'MPEG::PS::header_01bc',
     };
 
     my $dword = $self->peek_sync();
@@ -241,7 +297,7 @@ sub main {
     $ps->resync();
 
     while (my $header = $ps->read_header()) {
-        printf("0x%08x: %s\n",$header->offset(),ref($header));
+        printf("%s\n",$header->to_string());
     }
 
     print Dumper($ps);
