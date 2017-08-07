@@ -275,6 +275,7 @@ sub read_header {
         $self->{headers}{$dword} = $header->read($self->{_fh});
         return $self->{headers}{$dword};
     }
+    printf("Unknown header 0x%08x\n", $dword);
     return undef;
 }
 
