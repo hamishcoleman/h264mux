@@ -44,6 +44,22 @@ sub length {
     return $length_fixed + $length_variable;
 }
 
+sub read {
+    my $self = shift;
+    my $fh = shift;
+
+    $self->offset($fh->tell());
+
+    my $buf;
+    my $count = $fh->read($buf,$self->length_fixed());
+    if ($count != $self->length_fixed()) {
+        die("read size mismatch");
+    }
+
+    $self->{val} = $buf;
+    return $self;
+}
+
 sub to_string {
     my $self = shift;
 
@@ -51,14 +67,25 @@ sub to_string {
 
     my $offset = $self->offset();
     if (defined($offset)) {
-        $s .= sprintf("0x%08x ",$offset);
+        $s .= sprintf("0x%08x",$offset);
     }
 
+    $s .= sprintf("(0x%08x) ",$self->length());
     $s .= ref($self);
 
     return $s;
 }
 
+1;
+
+package MPEG::PS::header_unknown;
+# a header with a 16bit length field
+use warnings;
+use strict;
+
+our @ISA = qw(MPEG::PS::header_base);
+
+sub length_fixed { 0; }
 1;
 
 package MPEG::PS::header_len16;
@@ -74,22 +101,17 @@ sub read {
     my $self = shift;
     my $fh = shift;
 
-    $self->offset($fh->tell());
+    $self->SUPER::read($fh);
 
-    my $buf;
-    my $count = $fh->read($buf,$self->length_fixed());
-    if ($count != $self->length_fixed()) {
-        die("read size mismatch");
-    }
-
-    my @val = unpack('Nn',$buf);
+    my @val = unpack('Nn',$self->{val});
 
     die("bad magic") if ($val[0] != $self->sync_value());
 
     my $h= {};
     $self->length_variable($val[1]);
 
-    $count = $fh->read($buf,$self->length_variable());
+    my $buf;
+    my $count = $fh->read($buf,$self->length_variable());
     if ($count != $self->length_variable()) {
         die("read size mismatch");
     }
@@ -120,15 +142,9 @@ sub read {
     my $self = shift;
     my $fh = shift;
 
-    $self->offset($fh->tell());
+    $self->SUPER::read($fh);
 
-    my $buf;
-    my $count = $fh->read($buf,$self->length_fixed());
-    if ($count != $self->length_fixed()) {
-        die("read size mismatch");
-    }
-
-    my @val = unpack('NC*',$buf);
+    my @val = unpack('NC*',$self->{val});
 
     # MPEG1 has different marker here - and different header structure
     die("bad magic") if ($val[0] != $self->sync_value());
@@ -160,7 +176,8 @@ sub read {
     # TODO - check the reserved bytes?
     $self->length_variable((($val[10]) & 0x7));
 
-    $count = $fh->read($buf,$self->length_variable());
+    my $buf;
+    my $count = $fh->read($buf,$self->length_variable());
     if ($count != $self->length_variable()) {
         die("read size mismatch");
     }
@@ -275,7 +292,10 @@ sub read_header {
         $self->{headers}{$dword} = $header->read($self->{_fh});
         return $self->{headers}{$dword};
     }
-    printf("Unknown header 0x%08x\n", $dword);
+
+    my $header = MPEG::PS::header_unknown->new();
+    $self->{headers}{$dword} = $header->read($self->{_fh});
+    printf("%s Unknown header 0x%08x\n", $header->to_string(), $dword);
     return undef;
 }
 
