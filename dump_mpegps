@@ -5,7 +5,7 @@ use strict;
 # Given an MPEG2 Program Stream, dump its content structure
 #
 
-package MPEG::PS::header_base;
+package MPEG::PES::header_base;
 use warnings;
 use strict;
 
@@ -78,22 +78,23 @@ sub to_string {
 
 1;
 
-package MPEG::PS::header_unknown;
+package MPEG::PES::header_unknown;
 # a header with a 16bit length field
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PS::header_base);
+our @ISA = qw(MPEG::PES::header_base);
 
 sub length_fixed { 0; }
+
 1;
 
-package MPEG::PS::header_len16;
+package MPEG::PES::header_generic;
 # a header with a 16bit length field
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PS::header_base);
+our @ISA = qw(MPEG::PES::header_base);
 
 sub length_fixed { 6; }
 
@@ -128,12 +129,12 @@ sub read {
 
 1;
 
-package MPEG::PS::header_01ba;
+package MPEG::PES::header_01ba;
 # a Program Stream pack header
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PS::header_base);
+our @ISA = qw(MPEG::PES::header_base);
 
 sub sync_value { 0x1ba; }
 sub length_fixed { 14; }
@@ -198,34 +199,34 @@ sub to_string {
 
 1;
 
-package MPEG::PS::header_01bb;
+package MPEG::PES::header_01bb;
 # a system header
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PS::header_len16);
+our @ISA = qw(MPEG::PES::header_generic);
 
 sub sync_value { 0x1bb; }
 
 1;
 
-package MPEG::PS::header_01bc;
-# a system header
+package MPEG::PES::header_01bc;
+#
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PS::header_len16);
+our @ISA = qw(MPEG::PES::header_generic);
 
 sub sync_value { 0x1bc; }
 
 1;
 
-package MPEG::PS::header_01e0;
-# a system header
+package MPEG::PES::header_01e0;
+# video stream number 0
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PS::header_len16);
+our @ISA = qw(MPEG::PES::header_generic);
 
 sub sync_value { 0x1e0; }
 
@@ -244,7 +245,7 @@ sub read {
 
 1;
 
-package MPEG::PS;
+package MPEG::PES;
 use warnings;
 use strict;
 
@@ -268,8 +269,8 @@ sub open {
     return $self;
 }
 
-# peek at the next dword, which might be a valid sync header
-sub peek_sync {
+# peek at the next dword, which might be a valid header start code
+sub peek_header {
     my $self = shift;
     my $sync_size = 4;
 
@@ -290,7 +291,7 @@ sub resync {
     my $sync_value = 0x1ba;
 
     while(!$self->{_fh}->eof()) {
-        my $dword = $self->peek_sync();
+        my $dword = $self->peek_header();
         if ($dword == $sync_value) {
             return $self;
         }
@@ -305,13 +306,13 @@ sub read_header {
 
         #0x1b9 - TODO - this looks like a stop marker
     my $headers = {
-        0x1ba => 'MPEG::PS::header_01ba',
-        0x1bb => 'MPEG::PS::header_01bb',
-        0x1bc => 'MPEG::PS::header_01bc',
-        0x1e0 => 'MPEG::PS::header_01e0',
+        0x1ba => 'MPEG::PES::header_01ba',
+        0x1bb => 'MPEG::PES::header_01bb',
+        0x1bc => 'MPEG::PES::header_01bc',
+        0x1e0 => 'MPEG::PES::header_01e0',
     };
 
-    my $dword = $self->peek_sync();
+    my $dword = $self->peek_header();
 
     if (defined($headers->{$dword})) {
         my $header = $headers->{$dword}->new();
@@ -319,7 +320,7 @@ sub read_header {
         return $self->{headers}{$dword};
     }
 
-    my $header = MPEG::PS::header_unknown->new();
+    my $header = MPEG::PES::header_unknown->new();
     $self->{headers}{$dword} = $header->read($self->{_fh});
     printf("%s Unknown header 0x%08x\n", $header->to_string(), $dword);
     return undef;
@@ -338,7 +339,7 @@ $Data::Dumper::Sortkeys = 1;
 $Data::Dumper::Quotekeys = 0;
 
 sub main {
-    my $ps = MPEG::PS->new();
+    my $ps = MPEG::PES->new();
     $ps->open($ARGV[0]);
 
     $ps->resync();
