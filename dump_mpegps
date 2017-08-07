@@ -1,0 +1,73 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+#
+# Given an MPEG2 Program Stream, dump its content structure
+#
+
+package MPEG::PS;
+use warnings;
+use strict;
+
+use IO::File;
+
+sub new {
+    my $class = shift;
+    my $self = {};
+    bless $self, $class;
+    return $self;
+}
+
+sub open {
+    my $self = shift;
+    my $filename = shift;
+    my $fh = IO::File->new($filename,"r");
+    if (!defined($fh)) {
+        die("Could not open $filename: $!");
+    }
+    $self->{_fh} = $fh;
+    return $self;
+}
+
+# a very simple sync byte search
+sub resync {
+    my $self = shift;
+    my $sync_size = 4;
+    my $sync_value = 0x1ba;
+
+    while(!$self->{_fh}->eof()) {
+        my $buf;
+        my $count = $self->{_fh}->read($buf,$sync_size);
+        if ($count != $sync_size) {
+            die("read size mismatch");
+        }
+
+        my $dword = unpack("N",$buf);
+        if ($dword == $sync_value) {
+            # rewind back over the sync byte
+            $self->{_fh}->seek(-$sync_size,1);
+            return $self;
+        }
+    }
+}
+
+#
+sub read_pack_header {
+
+}
+
+package main;
+use warnings;
+use strict;
+
+sub main {
+    my $ps = MPEG::PS->new();
+    $ps->open($ARGV[0]);
+
+    $ps->resync();
+
+    print "Found header at offset ",$ps->{_fh}->tell(),"\n";
+}
+unless (caller) {
+    main();
+}
