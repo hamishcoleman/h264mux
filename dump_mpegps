@@ -220,6 +220,30 @@ sub sync_value { 0x1bc; }
 
 1;
 
+package MPEG::PS::header_01e0;
+# a system header
+use warnings;
+use strict;
+
+our @ISA = qw(MPEG::PS::header_len16);
+
+sub sync_value { 0x1e0; }
+
+sub read {
+    my $self = shift;
+    my $fh = shift;
+
+    $self->SUPER::read($fh);
+
+    # these sections are generally large, so avoid storing them (and
+    # thus avoid dumping their contents)
+    delete $self->{val}{_data};
+
+    return $self;
+}
+
+1;
+
 package MPEG::PS;
 use warnings;
 use strict;
@@ -279,10 +303,12 @@ sub resync {
 sub read_header {
     my $self = shift;
 
+        #0x1b9 - TODO - this looks like a stop marker
     my $headers = {
         0x1ba => 'MPEG::PS::header_01ba',
         0x1bb => 'MPEG::PS::header_01bb',
         0x1bc => 'MPEG::PS::header_01bc',
+        0x1e0 => 'MPEG::PS::header_01e0',
     };
 
     my $dword = $self->peek_sync();
