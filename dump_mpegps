@@ -203,8 +203,8 @@ sub read {
     my $h = {};
     $h->{PES_Header} = (($val[0] & 0xc0) >>6) == 0x2;
 
+    my $i = 0;
     if ($h->{PES_Header}) {
-        my $i = 0;
         $h->{PES_scrambling_control}    = (($val[$i] & 0x30) >>4);
         $h->{PES_priority}              = (($val[$i] & 0x08) >>3);
         $h->{data_alignment_indicator}  = (($val[$i] & 0x04) >>2);
@@ -285,6 +285,12 @@ sub read {
             }
         }
     }
+    my @a = @val[$i..$i+14];
+    my $s;
+    for my $c (@a) {
+       $s .= sprintf(" %02x",$c);
+    }
+    $h->{zz_} = $s;
 
     $self->{val} = $h;
 
