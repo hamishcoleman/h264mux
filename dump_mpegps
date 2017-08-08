@@ -131,6 +131,27 @@ sub read {
 
 1;
 
+package MPEG::PES::header_generic_large;
+# A large sized header, so dont store all of the data (or dump it)
+use warnings;
+use strict;
+
+our @ISA = qw(MPEG::PES::header_generic);
+
+sub read {
+    my $self = shift;
+    my $stream = shift;
+
+    $self->SUPER::read($stream);
+
+    # TODO - apply a size threshold to deleting?
+    delete $self->{val}{_data};
+
+    return $self;
+}
+
+1;
+
 package MPEG::PES::header_01b9;
 # program end code
 use warnings;
@@ -255,27 +276,47 @@ sub sync_value { 0x1bc; }
 
 1;
 
-package MPEG::PES::header_01e0;
-# video stream number 0
+package MPEG::PES::header_01bd;
+# private_stream_1
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PES::header_generic);
+our @ISA = qw(MPEG::PES::header_generic_large);
+sub sync_value { 0x1bd; }
 
+# TODO: work out what the contents are
+1;
+
+package MPEG::PES::header_01be;
+# padding stream
+use warnings;
+use strict;
+
+our @ISA = qw(MPEG::PES::header_generic_large);
+sub sync_value { 0x1be; }
+
+# No contents
+1;
+
+package MPEG::PES::header_01c0;
+# video stream number 0
+# TODO - make this a generic audio stream thing
+use warnings;
+use strict;
+
+our @ISA = qw(MPEG::PES::header_generic_large);
+sub sync_value { 0x1c0; }
+
+1;
+
+package MPEG::PES::header_01e0;
+# video stream number 0
+# TODO - make this a generic video stream thing
+use warnings;
+use strict;
+
+our @ISA = qw(MPEG::PES::header_generic_large);
 sub sync_value { 0x1e0; }
-
-sub read {
-    my $self = shift;
-    my $stream = shift;
-
-    $self->SUPER::read($stream);
-
-    # these sections are generally large, so avoid storing them (and
-    # thus avoid dumping their contents)
-    delete $self->{val}{_data};
-
-    return $self;
-}
 
 1;
 
@@ -371,6 +412,9 @@ sub read_header {
         0x1ba => 'MPEG::PES::header_01ba',
         0x1bb => 'MPEG::PES::header_01bb',
         0x1bc => 'MPEG::PES::header_01bc',
+        0x1bd => 'MPEG::PES::header_01bd',
+        0x1be => 'MPEG::PES::header_01be',
+        0x1c0 => 'MPEG::PES::header_01c0',
         0x1e0 => 'MPEG::PES::header_01e0',
     };
 
