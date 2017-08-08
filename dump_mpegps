@@ -5,7 +5,7 @@ use strict;
 # Given an MPEG2 Program Stream, dump its content structure
 #
 
-package MPEG::PES::header_base;
+package MPEG::PES::packet_base;
 use warnings;
 use strict;
 
@@ -84,23 +84,23 @@ sub to_string {
 
 1;
 
-package MPEG::PES::header_unknown;
-# class to hold unknown headers
+package MPEG::PES::packet_unknown;
+# class to hold unknown packets
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PES::header_base);
+our @ISA = qw(MPEG::PES::packet_base);
 
 sub length_fixed { 0; }
 
 1;
 
-package MPEG::PES::header_generic;
-# a header with a 16bit length field
+package MPEG::PES::packet_generic;
+# a packet with a 16bit length field
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PES::header_base);
+our @ISA = qw(MPEG::PES::packet_base);
 
 sub length_fixed { 6; }
 
@@ -131,12 +131,12 @@ sub read {
 
 1;
 
-package MPEG::PES::header_generic_large;
-# A large sized header, so dont store all of the data (or dump it)
+package MPEG::PES::packet_generic_large;
+# A large sized packet, so dont store all of the data (or dump it)
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PES::header_generic);
+our @ISA = qw(MPEG::PES::packet_generic);
 
 sub read {
     my $self = shift;
@@ -152,12 +152,12 @@ sub read {
 
 1;
 
-package MPEG::PES::header_01b9;
+package MPEG::PES::packet_01b9;
 # program end code
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PES::header_base);
+our @ISA = qw(MPEG::PES::packet_base);
 
 sub sync_value { 0x1b9; }
 sub length_fixed { 4; }
@@ -173,7 +173,7 @@ sub read {
 
     delete $self->{val};
 
-    # this pack header ends the whole stream, so gets unindented
+    # this pack packet ends the whole stream, so gets unindented
     $self->indent($self->indent()-1);
 
     return $self;
@@ -181,14 +181,14 @@ sub read {
 
 1;
 
-package MPEG::PES::header_01ba;
-# a Program Stream pack header
-# FIXME - this header (optionally) contains the system_header (0x1bb)
+package MPEG::PES::packet_01ba;
+# a Program Stream pack packet
+# FIXME - this packet (optionally) contains the system_header (0x1bb)
 # and is not followed by it, as coded here
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PES::header_base);
+our @ISA = qw(MPEG::PES::packet_base);
 
 sub sync_value { 0x1ba; }
 sub length_fixed { 14; }
@@ -236,9 +236,9 @@ sub read {
 
     $self->{val} = $h;
 
-    # this pack header starts a new group, so is unindented
+    # this pack packet starts a new group, so is unindented
     $self->indent($self->indent()-1);
-    # this header has children, so they get indented
+    # this packet has children, so they get indented
     $stream->current_indent($self->indent()+1);
 
     return $self;
@@ -254,12 +254,12 @@ sub to_string {
 
 1;
 
-package MPEG::PES::header_01bb;
+package MPEG::PES::packet_01bb;
 # a system header
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PES::header_generic);
+our @ISA = qw(MPEG::PES::packet_generic);
 sub sync_value { 0x1bb; }
 
 # TODO - decode contents:
@@ -282,12 +282,12 @@ sub sync_value { 0x1bb; }
 
 1;
 
-package MPEG::PES::header_01bc;
+package MPEG::PES::packet_01bc;
 # Program Stream Map
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PES::header_generic);
+our @ISA = qw(MPEG::PES::packet_generic);
 sub sync_value { 0x1bc; }
 
 # TODO - decode contents:
@@ -309,46 +309,46 @@ sub sync_value { 0x1bc; }
 
 1;
 
-package MPEG::PES::header_01bd;
+package MPEG::PES::packet_01bd;
 # private_stream_1
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PES::header_generic_large);
+our @ISA = qw(MPEG::PES::packet_generic_large);
 sub sync_value { 0x1bd; }
 
 # TODO: work out what the contents are
 1;
 
-package MPEG::PES::header_01be;
+package MPEG::PES::packet_01be;
 # padding stream
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PES::header_generic_large);
+our @ISA = qw(MPEG::PES::packet_generic_large);
 sub sync_value { 0x1be; }
 
 # No contents
 1;
 
-package MPEG::PES::header_01c0;
+package MPEG::PES::packet_01c0;
 # video stream number 0
 # TODO - make this a generic audio stream thing
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PES::header_generic_large);
+our @ISA = qw(MPEG::PES::packet_generic_large);
 sub sync_value { 0x1c0; }
 
 1;
 
-package MPEG::PES::header_01e0;
+package MPEG::PES::packet_01e0;
 # video stream number 0
 # TODO - make this a generic video stream thing
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PES::header_generic_large);
+our @ISA = qw(MPEG::PES::packet_generic_large);
 sub sync_value { 0x1e0; }
 
 1;
@@ -404,8 +404,8 @@ sub read_bytes {
     return $buf;
 }
 
-# peek at the next dword, which might be a valid header start code
-sub peek_header {
+# peek at the next dword, which might be a valid packet start code
+sub peek_packet {
     my $self = shift;
     my $sync_size = 4;
 
@@ -424,7 +424,7 @@ sub resync {
     my $sync_value = 0x1ba;
 
     while(!$self->{_fh}->eof()) {
-        my $dword = $self->peek_header();
+        my $dword = $self->peek_packet();
         if ($dword == $sync_value) {
             return $self;
         }
@@ -434,43 +434,42 @@ sub resync {
     }
 }
 
-sub read_header {
+sub read_packet {
     my $self = shift;
 
     return undef if $self->{_fh}->eof();
 
-        #0x1b9 - TODO - MPEG_program_end_code
-    my $headers = {
-        0x1b9 => 'MPEG::PES::header_01b9',
-        0x1ba => 'MPEG::PES::header_01ba',
-        0x1bb => 'MPEG::PES::header_01bb',
-        0x1bc => 'MPEG::PES::header_01bc',
-        0x1bd => 'MPEG::PES::header_01bd',
-        0x1be => 'MPEG::PES::header_01be',
-        0x1c0 => 'MPEG::PES::header_01c0',
-        0x1e0 => 'MPEG::PES::header_01e0',
+    my $packets = {
+        0x1b9 => 'MPEG::PES::packet_01b9',
+        0x1ba => 'MPEG::PES::packet_01ba',
+        0x1bb => 'MPEG::PES::packet_01bb',
+        0x1bc => 'MPEG::PES::packet_01bc',
+        0x1bd => 'MPEG::PES::packet_01bd',
+        0x1be => 'MPEG::PES::packet_01be',
+        0x1c0 => 'MPEG::PES::packet_01c0',
+        0x1e0 => 'MPEG::PES::packet_01e0',
     };
 
-    my $dword = $self->peek_header();
+    my $dword = $self->peek_packet();
 
-    my $class = $headers->{$dword};
-    my $header;
+    my $class = $packets->{$dword};
+    my $packet;
     if (defined($class)) {
-        $header = $class->new();
+        $packet = $class->new();
     } else {
-        $header = MPEG::PES::header_unknown->new();
+        $packet = MPEG::PES::packet_unknown->new();
     }
 
-    $header->indent($self->current_indent());
-    $self->{headers}{$dword} = $header;
-    $header->read($self);
+    $packet->indent($self->current_indent());
+    $self->{packets}{$dword} = $packet;
+    $packet->read($self);
 
     if (!defined($class)) {
-        printf("%s Unknown header 0x%08x\n", $header->to_string(), $dword);
+        printf("%s Unknown packet 0x%08x\n", $packet->to_string(), $dword);
         return undef;
     }
 
-    return $header;
+    return $packet;
 }
 
 1;
@@ -491,8 +490,8 @@ sub main {
 
     $ps->resync();
 
-    while (my $header = $ps->read_header()) {
-        printf("%s\n",$header->to_string());
+    while (my $packet = $ps->read_packet()) {
+        printf("%s\n",$packet->to_string());
     }
 
     print Dumper($ps);
