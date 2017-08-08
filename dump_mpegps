@@ -131,6 +131,8 @@ sub read {
 
 package MPEG::PES::header_01ba;
 # a Program Stream pack header
+# FIXME - this header (optionally) contains the system_header (0x1bb)
+# and is not followed by it, as coded here
 use warnings;
 use strict;
 
@@ -211,7 +213,7 @@ sub sync_value { 0x1bb; }
 1;
 
 package MPEG::PES::header_01bc;
-#
+# Program Stream Map
 use warnings;
 use strict;
 
@@ -304,7 +306,7 @@ sub resync {
 sub read_header {
     my $self = shift;
 
-        #0x1b9 - TODO - this looks like a stop marker
+        #0x1b9 - TODO - MPEG_program_end_code
     my $headers = {
         0x1ba => 'MPEG::PES::header_01ba',
         0x1bb => 'MPEG::PES::header_01bb',
