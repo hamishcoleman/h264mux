@@ -104,8 +104,17 @@ use warnings;
 use strict;
 
 our @ISA = qw(MPEG::PES::packet_base);
+sub length_fixed { 4; }
 
-sub length_fixed { 0; }
+sub to_string {
+    my $self = shift;
+
+    my $dword = unpack('N',$self->{val});
+
+    my $s = $self->SUPER::to_string();
+    $s .= sprintf(" Unknown packet 0x%08x\n", $dword);
+    return $s;
+}
 
 1;
 
@@ -552,6 +561,15 @@ sub current_indent {
     return $self->{current_indent};
 }
 
+sub packet_cb {
+    my $self = shift;
+    my $val = shift;
+    if (defined($val)) {
+        $self->{packet_cb} = $val;
+    }
+    return $self->{packet_cb};
+}
+
 sub read_bytes {
     my $self = shift;
     my $size = shift;
@@ -595,7 +613,7 @@ sub resync {
     }
 }
 
-sub read_packet {
+sub read_packets {
     my $self = shift;
 
     return undef if $self->{_fh}->eof();
@@ -625,8 +643,9 @@ sub read_packet {
     $self->{packets}{$dword} = $packet;
     $packet->read($self);
 
+    &{$self->packet_cb()}($packet);
+
     if (!defined($class)) {
-        printf("%s Unknown packet 0x%08x\n", $packet->to_string(), $dword);
         return undef;
     }
 
@@ -644,6 +663,11 @@ $Data::Dumper::Indent = 1;
 $Data::Dumper::Sortkeys = 1;
 $Data::Dumper::Quotekeys = 0;
 
+sub packet_cb {
+    my $packet = shift;
+    printf("%s\n",$packet->to_string());
+}
+
 sub main {
     my $ps = MPEG::PES->new();
     $ps->current_indent(1);
@@ -651,9 +675,8 @@ sub main {
 
     $ps->resync();
 
-    while (my $packet = $ps->read_packet()) {
-        printf("%s\n",$packet->to_string());
-    }
+    $ps->packet_cb(\&packet_cb);
+    while ($ps->read_packets()) { }
 
     print Dumper($ps);
 }
