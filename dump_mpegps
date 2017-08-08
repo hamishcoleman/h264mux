@@ -37,6 +37,15 @@ sub length_variable {
     return $self->{length_variable};
 }
 
+sub indent {
+    my $self = shift;
+    my $val = shift;
+    if (defined($val) && $val>0) {
+        $self->{indent} = $val;
+    }
+    return $self->{indent};
+}
+
 sub length {
     my $self = shift;
     my $length_fixed = $self->length_fixed();
@@ -66,7 +75,8 @@ sub to_string {
         $s .= sprintf("0x%08x",$offset);
     }
 
-    $s .= sprintf("(0x%08x) ",$self->length());
+    $s .= sprintf("(0x%08x)",$self->length());
+    $s .= " " x ($self->indent() || 1);
     $s .= ref($self);
 
     return $s;
@@ -75,7 +85,7 @@ sub to_string {
 1;
 
 package MPEG::PES::header_unknown;
-# a header with a 16bit length field
+# class to hold unknown headers
 use warnings;
 use strict;
 
@@ -176,6 +186,11 @@ sub read {
 
     $self->{val} = $h;
 
+    # this pack header starts a new group, so is unindented
+    $self->indent($self->indent()-1);
+    # this header has children, so they get indented
+    $stream->current_indent($self->indent()+1);
+
     return $self;
 }
 
@@ -264,6 +279,15 @@ sub current_offset {
     return $self->{_fh}->tell();
 }
 
+sub current_indent {
+    my $self = shift;
+    my $val = shift;
+    if (defined($val) && $val>0) {
+        $self->{current_indent} = $val;
+    }
+    return $self->{current_indent};
+}
+
 sub read_bytes {
     my $self = shift;
     my $size = shift;
@@ -310,6 +334,8 @@ sub resync {
 sub read_header {
     my $self = shift;
 
+    return undef if $self->{_fh}->eof();
+
         #0x1b9 - TODO - MPEG_program_end_code
     my $headers = {
         0x1ba => 'MPEG::PES::header_01ba',
@@ -328,6 +354,7 @@ sub read_header {
         $header = MPEG::PES::header_unknown->new();
     }
 
+    $header->indent($self->current_indent());
     $self->{headers}{$dword} = $header;
     $header->read($self);
 
@@ -352,6 +379,7 @@ $Data::Dumper::Quotekeys = 0;
 
 sub main {
     my $ps = MPEG::PES->new();
+    $ps->current_indent(1);
     $ps->open($ARGV[0]);
 
     $ps->resync();
