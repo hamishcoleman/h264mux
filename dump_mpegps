@@ -179,10 +179,10 @@ sub read {
 
     $self->SUPER::read($stream);
 
-    my @val = $self->{val}{_data};
+    my @val = @{$self->{val}{_data}};
 
     my $h = {};
-    $h->{PES_Header} = (($val[0] & 0xc0) == 0x80);
+    $h->{PES_Header} = (($val[0] & 0xc0) >>6) == 0x2;
 
     if ($h->{PES_Header}) {
         $h->{PES_scrambling_control}   = (($val[0] & 0x30) >>4);
