@@ -46,15 +46,11 @@ sub length {
 
 sub read {
     my $self = shift;
-    my $fh = shift;
+    my $stream = shift;
 
-    $self->offset($fh->tell());
+    $self->offset($stream->current_offset());
 
-    my $buf;
-    my $count = $fh->read($buf,$self->length_fixed());
-    if ($count != $self->length_fixed()) {
-        die("read size mismatch");
-    }
+    my $buf = $stream->read_bytes($self->length_fixed());
 
     $self->{val} = $buf;
     return $self;
@@ -100,9 +96,9 @@ sub length_fixed { 6; }
 
 sub read {
     my $self = shift;
-    my $fh = shift;
+    my $stream = shift;
 
-    $self->SUPER::read($fh);
+    $self->SUPER::read($stream);
 
     my @val = unpack('Nn',$self->{val});
 
@@ -111,11 +107,7 @@ sub read {
     my $h= {};
     $self->length_variable($val[1]);
 
-    my $buf;
-    my $count = $fh->read($buf,$self->length_variable());
-    if ($count != $self->length_variable()) {
-        die("read size mismatch");
-    }
+    my $buf = $stream->read_bytes($self->length_variable());
 
     @val = unpack('C*',$buf);
 
@@ -143,9 +135,9 @@ sub length_fixed { 14; }
 
 sub read {
     my $self = shift;
-    my $fh = shift;
+    my $stream = shift;
 
-    $self->SUPER::read($fh);
+    $self->SUPER::read($stream);
 
     my @val = unpack('NC*',$self->{val});
 
@@ -179,11 +171,7 @@ sub read {
     # TODO - check the reserved bytes?
     $self->length_variable((($val[10]) & 0x7));
 
-    my $buf;
-    my $count = $fh->read($buf,$self->length_variable());
-    if ($count != $self->length_variable()) {
-        die("read size mismatch");
-    }
+    my $buf = $stream->read_bytes($self->length_variable());
     $h->{stuff_bytes} = $buf;
 
     $self->{val} = $h;
@@ -234,9 +222,9 @@ sub sync_value { 0x1e0; }
 
 sub read {
     my $self = shift;
-    my $fh = shift;
+    my $stream = shift;
 
-    $self->SUPER::read($fh);
+    $self->SUPER::read($stream);
 
     # these sections are generally large, so avoid storing them (and
     # thus avoid dumping their contents)
@@ -271,16 +259,30 @@ sub open {
     return $self;
 }
 
+sub current_offset {
+    my $self = shift;
+    return $self->{_fh}->tell();
+}
+
+sub read_bytes {
+    my $self = shift;
+    my $size = shift;
+    die("need size") if (!defined($size));
+
+    my $buf;
+    my $count = $self->{_fh}->read($buf,$size);
+    if ($count != $size) {
+        die("read size mismatch");
+    }
+    return $buf;
+}
+
 # peek at the next dword, which might be a valid header start code
 sub peek_header {
     my $self = shift;
     my $sync_size = 4;
 
-    my $buf;
-    my $count = $self->{_fh}->read($buf,$sync_size);
-    if ($count != $sync_size) {
-        die("read size mismatch");
-    }
+    my $buf = $self->read_bytes($sync_size);
 
     # rewind back over the sync byte
     $self->{_fh}->seek(-$sync_size,1);
@@ -288,6 +290,8 @@ sub peek_header {
 }
 
 # a very simple sync byte search
+# TODO - this sync value is actually "0x00 0x00 0x01", with "0xba"
+# as the only valid starting streamid
 sub resync {
     my $self = shift;
     my $sync_value = 0x1ba;
