@@ -82,6 +82,20 @@ sub to_string {
     return $s;
 }
 
+# return the spaces to indent a new line for additional data
+sub _extra_indent {
+    my $self = shift;
+
+    my $s;
+    if (defined($self->offset())) {
+        $s .= " "x10; # skip the offset field
+    }
+    $s .= " "x12; # skip the length field
+    $s .= " " x $self->indent(); # indent as needed
+    $s .= "|- "; # clearly mark the extra data
+    return $s;
+}
+
 1;
 
 package MPEG::PES::packet_unknown;
@@ -148,6 +162,53 @@ sub read {
     delete $self->{val}{_data};
 
     return $self;
+}
+
+1;
+
+package MPEG::PES::packet_generic_peshead;
+# A packet, that might contain the optional PES Header
+use warnings;
+use strict;
+
+our @ISA = qw(MPEG::PES::packet_generic);
+
+sub read {
+    my $self = shift;
+    my $stream = shift;
+
+    $self->SUPER::read($stream);
+
+    my @val = $self->{val}{_data};
+
+    my $h = {};
+    $h->{PES_Header} = (($val[0] & 0xc0) == 0x80);
+
+    if ($h->{PES_Header}) {
+        $h->{PES_scrambling_control}   = (($val[0] & 0x30) >>4);
+        $h->{PES_priority}             = (($val[0] & 0x08) >>3);
+        $h->{data_alignment_indicator} = (($val[0] & 0x04) >>2);
+        $h->{copyright}                = (($val[0] & 0x02) >>1);
+        $h->{original_or_copy}         = (($val[0] & 0x01));
+    }
+
+    $self->{val} = $h;
+
+    return $self;
+}
+
+sub to_string {
+    my $self = shift;
+
+    my $s = $self->SUPER::to_string();
+    if ($self->{val}{PES_Header}) {
+        for my $key (sort(keys(%{$self->{val}}))) {
+            my $val = $self->{val}{$key};
+            $s .= "\n" . $self->_extra_indent();
+            $s .= sprintf("%s = %s", $key, $val);
+        }
+    }
+    return $s;
 }
 
 1;
@@ -337,7 +398,7 @@ package MPEG::PES::packet_01c0;
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PES::packet_generic_large);
+our @ISA = qw(MPEG::PES::packet_generic_peshead);
 sub sync_value { 0x1c0; }
 
 1;
@@ -348,7 +409,7 @@ package MPEG::PES::packet_01e0;
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PES::packet_generic_large);
+our @ISA = qw(MPEG::PES::packet_generic_peshead);
 sub sync_value { 0x1e0; }
 
 1;
