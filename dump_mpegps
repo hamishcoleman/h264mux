@@ -320,18 +320,24 @@ sub read_header {
 
     my $dword = $self->peek_header();
 
-    if (defined($headers->{$dword})) {
-        my $header = $headers->{$dword}->new();
-        $self->{headers}{$dword} = $header->read($self->{_fh});
-        return $self->{headers}{$dword};
+    my $class = $headers->{$dword};
+    my $header;
+    if (defined($class)) {
+        $header = $class->new();
+    } else {
+        $header = MPEG::PES::header_unknown->new();
     }
 
-    my $header = MPEG::PES::header_unknown->new();
-    $self->{headers}{$dword} = $header->read($self->{_fh});
-    printf("%s Unknown header 0x%08x\n", $header->to_string(), $dword);
-    return undef;
-}
+    $self->{headers}{$dword} = $header;
+    $header->read($self);
 
+    if (!defined($class)) {
+        printf("%s Unknown header 0x%08x\n", $header->to_string(), $dword);
+        return undef;
+    }
+
+    return $header;
+}
 
 1;
 
