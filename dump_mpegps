@@ -142,10 +142,7 @@ sub read {
 
     my $buf = $stream->read_bytes($self->length_variable());
 
-    @val = unpack('C*',$buf);
-
-    # TODO - where to decode this header?
-    @{$h->{_data}} = @val;
+    $h->{_data} = $buf;
 
     $self->{val} = $h;
 
@@ -207,7 +204,7 @@ sub read {
 
     $self->SUPER::read($stream);
 
-    my @val = @{$self->{val}{_data}};
+    my @val = unpack('C*',$self->{val}{_data});
 
     my $h = {};
     $h->{PES_Header} = (($val[0] & 0xc0) >>6) == 0x2;
@@ -294,12 +291,9 @@ sub read {
             }
         }
     }
-    my @a = @val[$i..$i+14];
-    my $s;
-    for my $c (@a) {
-       $s .= sprintf(" %02x",$c);
-    }
-    $h->{zz_} = $s;
+
+    # save the remaining packet data
+    $self->{_pes_data} = substr($self->{val}{_data},$i);
 
     $self->{val} = $h;
 
@@ -665,7 +659,20 @@ $Data::Dumper::Quotekeys = 0;
 
 sub packet_cb {
     my $packet = shift;
-    printf("%s\n",$packet->to_string());
+
+    # FIXME - need an option processor
+    my $output_bin = 0;
+
+    # FIXME - digging around in packets
+    my $data = $packet->{_pes_data};
+
+    if ($output_bin) {
+        if (defined($data)) {
+            printf("%s",$data);
+        }
+    } else {
+        printf("%s\n",$packet->to_string());
+    }
 }
 
 sub main {
