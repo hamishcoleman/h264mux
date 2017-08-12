@@ -42,6 +42,7 @@ sub peek_type {
 
     my ($dword,$type) = unpack("NC",$buf);
 
+    # TODO - NAL streams can have both 00,00,00,01 and 00,00,01 as sync markers
     if ($dword != $self->packet_sync_value()) {
         return undef;
     }
