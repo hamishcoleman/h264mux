@@ -109,7 +109,7 @@ sub resync {
 
     while(!$self->{_fh}->eof()) {
         my $type = $self->peek_type();
-        if (defined($type) && $type == $sync_value) {
+        if (defined($type)) {
             return $self;
         }
 
