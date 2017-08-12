@@ -8,6 +8,8 @@ sub new {
     my $class = shift;
     my $self = {};
     bless $self, $class;
+    $self->current_indent(1);
+
     return $self;
 }
 

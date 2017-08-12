@@ -39,7 +39,6 @@ sub packet_cb {
 
 sub main {
     my $ps = MPEG::PES->new();
-    $ps->current_indent(1);
     $ps->open($ARGV[0]);
 
     $ps->resync();
