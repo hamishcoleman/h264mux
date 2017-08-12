@@ -35,6 +35,9 @@ sub packet_cb {
     } else {
         printf("%s\n",$packet->to_string());
     }
+
+    # FIXME - digging around in object privates
+    $packet->{val} = substr($packet->{val},0,16);
 }
 
 sub main {
