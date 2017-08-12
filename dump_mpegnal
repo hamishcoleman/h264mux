@@ -1,0 +1,53 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+#
+# Given an MPEG2 NAL stream, dump it
+#
+
+use File::Spec;
+
+# allow the libs to be in the bin dir
+use FindBin;
+use lib File::Spec->catdir($FindBin::RealBin,"lib");
+use lib File::Spec->catdir($ENV{HOME},"s/bin/lib");
+
+use MPEG::NAL;
+
+use Data::Dumper;
+$Data::Dumper::Indent = 1;
+$Data::Dumper::Sortkeys = 1;
+$Data::Dumper::Quotekeys = 0;
+
+sub packet_cb {
+    my $packet = shift;
+
+    # FIXME - need an option processor
+    my $output_bin = 0;
+
+    # FIXME - digging around in packets
+    my $data = $packet->{_pes_data};
+
+    if ($output_bin) {
+        if (defined($data)) {
+            printf("%s",$data);
+        }
+    } else {
+        printf("%s\n",$packet->to_string());
+    }
+}
+
+sub main {
+    my $ps = MPEG::NAL->new();
+    $ps->open($ARGV[0]);
+
+    $ps->resync();
+
+    $ps->packet_cb(\&packet_cb);
+    while ($ps->read_packets()) { }
+
+    print Dumper($ps);
+}
+unless (caller) {
+    main();
+}

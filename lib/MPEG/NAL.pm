@@ -1,0 +1,48 @@
+package MPEG::NAL;
+use warnings;
+use strict;
+
+use IO::File;
+
+use MPEG::stream_base;
+our @ISA = qw(MPEG::stream_base);
+
+use MPEG::NAL::packet_unknown;
+use MPEG::NAL::packet_09;
+use MPEG::NAL::packet_27;
+use MPEG::NAL::packet_28;
+
+sub packet_unknown {
+    return "MPEG::NAL::packet_unknown";
+}
+
+sub packet_known_map {
+    return {
+        0x09 => 'MPEG::NAL::packet_09',
+        0x27 => 'MPEG::NAL::packet_27',
+        0x28 => 'MPEG::NAL::packet_28',
+    };
+}
+
+sub packet_sync_value {
+    return 0x1;
+}
+
+# peek at the next dword, which might be a valid packet start code
+sub peek_type {
+    my $self = shift;
+    my $size = 5;
+
+    my $buf = $self->peek_bytes($size);
+
+
+    my ($dword,$type) = unpack("NC",$buf);
+
+    if ($dword != $self->packet_sync_value()) {
+        return undef;
+    }
+
+    return $type;
+}
+
+1;
