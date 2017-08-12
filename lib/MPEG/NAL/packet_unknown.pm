@@ -3,9 +3,8 @@ package MPEG::NAL::packet_unknown;
 use warnings;
 use strict;
 
-use MPEG::packet_base;
-our @ISA = qw(MPEG::packet_base);
-sub length_fixed { 5; }
+use MPEG::NAL::packet_base;
+our @ISA = qw(MPEG::NAL::packet_base);
 
 sub to_string {
     my $self = shift;
