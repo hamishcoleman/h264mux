@@ -3,8 +3,8 @@ package MPEG::PES::packet_01bc;
 use warnings;
 use strict;
 
-use MPEG::PES::packet_generic;
-our @ISA = qw(MPEG::PES::packet_generic);
+use MPEG::PES::packet_base;
+our @ISA = qw(MPEG::PES::packet_base);
 sub sync_value { 0x1bc; }
 
 # TODO - decode contents:

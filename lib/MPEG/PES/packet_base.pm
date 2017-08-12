@@ -1,4 +1,4 @@
-package MPEG::PES::packet_generic;
+package MPEG::PES::packet_base;
 # a packet with a 16bit length field
 use warnings;
 use strict;

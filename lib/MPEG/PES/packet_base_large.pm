@@ -1,10 +1,10 @@
-package MPEG::PES::packet_generic_large;
+package MPEG::PES::packet_base_large;
 # A large sized packet, so dont store all of the data (or dump it)
 use warnings;
 use strict;
 
-use MPEG::PES::packet_generic;
-our @ISA = qw(MPEG::PES::packet_generic);
+use MPEG::PES::packet_base;
+our @ISA = qw(MPEG::PES::packet_base);
 
 sub read {
     my $self = shift;

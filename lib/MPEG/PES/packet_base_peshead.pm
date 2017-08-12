@@ -1,10 +1,10 @@
-package MPEG::PES::packet_generic_peshead;
+package MPEG::PES::packet_base_peshead;
 # A packet, that might contain the optional PES Header
 use warnings;
 use strict;
 
-use MPEG::PES::packet_generic;
-our @ISA = qw(MPEG::PES::packet_generic);
+use MPEG::PES::packet_base;
+our @ISA = qw(MPEG::PES::packet_base);
 
 sub _pts_dts {
     my $match = shift;
