@@ -34,22 +34,26 @@ sub packet_known_map {
     };
 }
 
-# a very simple sync byte search
 # TODO - this sync value is actually "0x00 0x00 0x01", with "0xba"
 # as the only valid starting streamid
-sub resync {
+sub packet_sync_value {
+    return 0x1ba;
+}
+
+# peek at the next dword, which might be a valid packet start code
+sub peek_type {
     my $self = shift;
-    my $sync_value = 0x1ba;
+    my $size = 4;
 
-    while(!$self->{_fh}->eof()) {
-        my $dword = $self->peek_packet();
-        if ($dword == $sync_value) {
-            return $self;
-        }
+    my $buf = $self->peek_bytes($size);
 
-        # skip to the next possible position
-        $self->{_fh}->seek(1,1);
+    my $dword = unpack("N",$buf);
+
+    if (($dword & 0xffffff00) != 0x00000100) {
+        return undef;
     }
+
+    return $dword;
 }
 
 1;

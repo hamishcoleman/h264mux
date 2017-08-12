@@ -60,16 +60,14 @@ sub read_bytes {
     return $buf;
 }
 
-# peek at the next dword, which might be a valid packet start code
-sub peek_packet {
+sub peek_bytes {
     my $self = shift;
-    my $sync_size = 4;
+    my $size = shift;
 
-    my $buf = $self->read_bytes($sync_size);
+    my $buf = $self->read_bytes($size);
+    $self->{_fh}->seek(-$size,1);
 
-    # rewind back over the sync byte
-    $self->{_fh}->seek(-$sync_size,1);
-    return unpack("N",$buf);
+    return $buf;
 }
 
 sub read_packets {
@@ -78,8 +76,12 @@ sub read_packets {
     return undef if $self->{_fh}->eof();
 
     my $packet;
-    my $dword = $self->peek_packet();
-    my $class = $self->packet_known_map()->{$dword};
+    my $type = $self->peek_type();
+
+    my $class;
+    if (defined($type)) {
+        $class = $self->packet_known_map()->{$type};
+    }
 
     if (defined($class)) {
         $packet = $class->new();
@@ -88,7 +90,7 @@ sub read_packets {
     }
 
     $packet->indent($self->current_indent());
-    $self->{packets}{$dword} = $packet;
+    $self->{packets}{$type} = $packet;
     $packet->read($self);
 
     &{$self->packet_cb()}($packet);
@@ -98,6 +100,22 @@ sub read_packets {
     }
 
     return $packet;
+}
+
+# a very simple sync byte search
+sub resync {
+    my $self = shift;
+    my $sync_value = $self->packet_sync_value();
+
+    while(!$self->{_fh}->eof()) {
+        my $type = $self->peek_type();
+        if (defined($type) && $type == $sync_value) {
+            return $self;
+        }
+
+        # skip to the next possible position
+        $self->{_fh}->seek(1,1);
+    }
 }
 
 1;
