@@ -3,8 +3,8 @@ package MPEG::PES::packet_01b9;
 use warnings;
 use strict;
 
-use MPEG::PES::packet_base;
-our @ISA = qw(MPEG::PES::packet_base);
+use MPEG::packet_base;
+our @ISA = qw(MPEG::packet_base);
 
 sub sync_value { 0x1b9; }
 sub length_fixed { 4; }

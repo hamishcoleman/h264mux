@@ -3,7 +3,8 @@ package MPEG::PES::packet_generic;
 use warnings;
 use strict;
 
-our @ISA = qw(MPEG::PES::packet_base);
+use MPEG::packet_base
+our @ISA = qw(MPEG::packet_base);
 
 sub length_fixed { 6; }
  

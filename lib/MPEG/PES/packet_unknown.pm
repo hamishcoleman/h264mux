@@ -3,8 +3,8 @@ package MPEG::PES::packet_unknown;
 use warnings;
 use strict;
 
-use MPEG::PES::packet_base;
-our @ISA = qw(MPEG::PES::packet_base);
+use MPEG::packet_base;
+our @ISA = qw(MPEG::packet_base);
 sub length_fixed { 4; }
 
 sub to_string {

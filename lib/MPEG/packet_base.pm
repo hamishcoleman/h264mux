@@ -1,4 +1,4 @@
-package MPEG::PES::packet_base;
+package MPEG::packet_base;
 use warnings;
 use strict;
 #
