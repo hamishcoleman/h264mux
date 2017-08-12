@@ -72,4 +72,32 @@ sub peek_packet {
     return unpack("N",$buf);
 }
 
+sub read_packets {
+    my $self = shift;
+
+    return undef if $self->{_fh}->eof();
+
+    my $packet;
+    my $dword = $self->peek_packet();
+    my $class = $self->packet_known_map()->{$dword};
+
+    if (defined($class)) {
+        $packet = $class->new();
+    } else {
+        $packet = $self->packet_unknown()->new();
+    }
+
+    $packet->indent($self->current_indent());
+    $self->{packets}{$dword} = $packet;
+    $packet->read($self);
+
+    &{$self->packet_cb()}($packet);
+
+    if (!defined($class)) {
+        return undef;
+    }
+
+    return $packet;
+}
+
 1;
