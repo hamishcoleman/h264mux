@@ -9,6 +9,8 @@ our @ISA = qw(MPEG::stream_base);
 
 use MPEG::NAL::packet_unknown;
 use MPEG::NAL::packet_09;
+use MPEG::NAL::packet_21;
+use MPEG::NAL::packet_25;
 use MPEG::NAL::packet_27;
 use MPEG::NAL::packet_28;
 
@@ -19,6 +21,8 @@ sub packet_unknown {
 sub packet_known_map {
     return {
         0x09 => 'MPEG::NAL::packet_09',
+        0x21 => 'MPEG::NAL::packet_21',
+        0x25 => 'MPEG::NAL::packet_25',
         0x27 => 'MPEG::NAL::packet_27',
         0x28 => 'MPEG::NAL::packet_28',
     };
