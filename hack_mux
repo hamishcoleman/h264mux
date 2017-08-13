@@ -1,0 +1,67 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+#
+# A brainless h264 NAL to PES muxer
+#
+
+sub packet_01ba {
+    return pack("C*", 0,0,1,0xba,0x47,0xea,0x9d,0xd4,0x94,1,0,0,0x0f,0xf8);
+}
+
+sub packet_01bb {
+    return pack("C*",
+        0,0,1,0xbb,0,9,0x80,0,1,0,0x21,0xff,0xe0,0xe1,0x90,
+    );
+}
+
+sub packet_01bc {
+    return pack("C*",
+        0,0,1,0xbc,0,0xe,0xe1,0xff,0,0,0,4,0x1b,0xe0,0,0,0x53,0x12,0xf5,
+        0x5c,
+    );
+}
+
+sub packet_01e0_head {
+    my $buflen = shift;
+
+    # add the pes header length
+    $buflen += 13;
+
+    my @bytes = unpack("CC", pack("n",$buflen));
+
+    my @val = (
+        0,0,1,0xe0,0xff,0xe9,0x80,0xc0,0x0a,0x31,0xfa,0xa9,1,0xc5,0x11,
+        0xfa,0xa9,0x01,0xc5,
+    );
+
+    $val[4] = $bytes[0];
+    $val[5] = $bytes[1];
+
+    return pack("C*", @val);
+}
+
+sub packet_nal_09 {
+    return pack("C*",
+        0,0,0,1,9,0xe0,
+    );
+}
+
+sub main() {
+    print(packet_01ba());
+    print(packet_01bb());
+    print(packet_01bc());
+
+#    print(packet_01e0_head(6));
+#    print(packet_nal_09());
+    
+    my $buflen = 0xffdc;
+    my $buf;
+    while((my $read = sysread(STDIN,$buf,$buflen))>0) {
+        print(packet_01e0_head($read));
+        print($buf);
+    }
+}
+unless (caller) {
+    main();
+}
