@@ -53,6 +53,7 @@ sub pes_head {
     my $tmp = 0;
 
     #val[0]:
+    $tmp = 0;
     $tmp |= 0x80;
     # PES_scrambling_control
     # PES_priority
@@ -61,12 +62,10 @@ sub pes_head {
     # original_or_copy
     push @val, $tmp;
 
-    if (defined($params{PTS})) {
-        if (defined($params{DTS})) {
-            $params{PTS_DTS_flags} = 3;
-        } else {
-            $params{PTS_DTS_flags} = 2;
-        }
+    if (defined($params{PTS}) && defined($params{PTS})) {
+        $params{PTS_DTS_flags} = 3;
+    } elsif (defined($params{PTS})) {
+        $params{PTS_DTS_flags} = 2;
     } elsif (defined($params{DTS})) {
         ...
     } else {
@@ -74,6 +73,7 @@ sub pes_head {
     }
 
     #val[1]:
+    $tmp = 0;
     $tmp |= ($params{PTS_DTS_flags} & 0x3) << 6;
     # ESCR_flag
     # ES_rate_flag
