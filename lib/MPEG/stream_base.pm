@@ -99,9 +99,11 @@ sub read_packets {
 
     $packet->indent($self->current_indent());
     $self->{packets}{$type} = $packet;
-    $packet->read($self);
+    my @packets = $packet->read($self);
 
-    &{$self->packet_cb()}($packet);
+    for my $entry (@packets) {
+        &{$self->packet_cb()}($entry);
+    }
 
     if (!defined($class)) {
         return undef;
