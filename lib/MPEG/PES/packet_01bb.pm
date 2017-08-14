@@ -50,12 +50,12 @@ sub read {
     $h->{CSPS_flag}                     = ($val[$i] & 0x01);
     $i++;
 
-    $h->{system_audio_lock_flag}        = ($val[$i] & 0x80) >>8;
-    $h->{system_vidio_lock_flag}        = ($val[$i] & 0x40) >>7;
+    $h->{system_audio_lock_flag}        = ($val[$i] & 0x80) >>7;
+    $h->{system_vidio_lock_flag}        = ($val[$i] & 0x40) >>6;
     $h->{video_bound}                   = ($val[$i] & 0x1f);
     $i++;
 
-    $h->{packet_rate_restriction_flag}  = ($val[$i] & 0x80) != 0;
+    $h->{packet_rate_restriction_flag}  = ($val[$i] & 0x80) >>7;
     $i++;
 
     while (($val[$i] & 0x80) == 0x80) {
