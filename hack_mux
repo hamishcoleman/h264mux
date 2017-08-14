@@ -37,8 +37,8 @@ sub packet_01ba {
 
     if (defined($params{SCR_ext})) {
         ...;
-        $val[8];
-        $val[9];
+        #$val[8];
+        #$val[9];
     }
 
     $val[10] |= (($params{mux_rate} >>15) & 0xff);
@@ -250,7 +250,9 @@ sub chunk {
 }
 
 sub main() {
-    my @order = (
+
+    # Exactly match the order that was output from VLC for my test.02 stream
+    my @order_vlc = (
         ['01ba', SCR=>1051310738, mux_rate=>3],
         ['01bb'],
         ['01bc'],
@@ -293,16 +295,28 @@ sub main() {
         ['01e0', 0x5937, DTS=>1051430486, PTS=>1051430486, nal_09=>1],
     );
 
+    my $clock = 1;
+
+    # a minimal header set
+    my @order = (
+        ['01ba', SCR=>$clock, mux_rate=>1],
+        ['01bb'],
+        ['01bc'],
+    );
+
+    # TODO - need cmdline args to select which order to use
+
     # follow the given pattern while we can
     for my $params (@order) {
         print(chunk(@{$params}));
     }
 
     # then just fill the file
-    my $chunk = chunk_01e0(0xf000);
+    my $chunk = chunk_01e0(0xf000, DTS=>$clock, PTS=>$clock);
     while (defined($chunk)) {
         print($chunk);
-        $chunk = chunk_01e0(0xf000);
+        $clock += 3000; # total guess
+        $chunk = chunk_01e0(0xf000, DTS=>$clock, PTS=>$clock);
     }
 }
 unless (caller) {
