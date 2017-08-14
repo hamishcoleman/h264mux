@@ -17,12 +17,11 @@ use MPEG::PES::packet_01be;
 use MPEG::PES::packet_01c0;
 use MPEG::PES::packet_01e0;
 
-sub packet_unknown {
-    return "MPEG::PES::packet_unknown";
-}
+sub packet_classname {
+    my $self = shift;
+    my $type = shift;
 
-sub packet_known_map {
-    return {
+    my %types = (
         0x1b9 => 'MPEG::PES::packet_01b9',
         0x1ba => 'MPEG::PES::packet_01ba',
         0x1bb => 'MPEG::PES::packet_01bb',
@@ -31,7 +30,13 @@ sub packet_known_map {
         0x1be => 'MPEG::PES::packet_01be',
         0x1c0 => 'MPEG::PES::packet_01c0',
         0x1e0 => 'MPEG::PES::packet_01e0',
-    };
+    );
+
+    my $class = $types{$type};
+    if (defined($class)) {
+        return $class;
+    }
+    return 'MPEG::PES::packet_unknown';
 }
 
 # TODO - this sync value is actually "0x00 0x00 0x01", with "0xba"

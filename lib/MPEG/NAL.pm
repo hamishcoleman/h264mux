@@ -14,18 +14,23 @@ use MPEG::NAL::packet_25;
 use MPEG::NAL::packet_27;
 use MPEG::NAL::packet_28;
 
-sub packet_unknown {
-    return "MPEG::NAL::packet_unknown";
-}
+sub packet_classname {
+    my $self = shift;
+    my $type = shift;
 
-sub packet_known_map {
-    return {
+    my %types = (
         0x09 => 'MPEG::NAL::packet_09',
         0x21 => 'MPEG::NAL::packet_21',
         0x25 => 'MPEG::NAL::packet_25',
         0x27 => 'MPEG::NAL::packet_27',
         0x28 => 'MPEG::NAL::packet_28',
-    };
+    );
+
+    my $class = $types{$type};
+    if (defined($class)) {
+        return $class;
+    }
+    return 'MPEG::NAL::packet_unknown';
 }
 
 sub packet_sync_value {

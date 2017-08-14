@@ -86,30 +86,29 @@ sub read_packets {
         return undef;
     }
 
-    my $class;
-    if (defined($type)) {
-        $class = $self->packet_known_map()->{$type};
+    my $class = $self->packet_classname($type);
+    if (!defined($class)) {
+        return undef;
     }
 
-    if (defined($class)) {
-        $packet = $class->new();
-    } else {
-        $packet = $self->packet_unknown()->new();
-    }
+    $packet = $class->new();
 
     $packet->indent($self->current_indent());
     $self->{packets}{$type} = $packet;
     my @packets = $packet->read($self);
 
+    if (!defined($packets[0])) {
+        # no packets returned, this is an unknown class and we need to stop
+        # still callback though, so we can output an unknown packet string
+        &{$self->packet_cb()}($packet);
+        return undef;
+    }
+
     for my $entry (@packets) {
         &{$self->packet_cb()}($entry);
     }
 
-    if (!defined($class)) {
-        return undef;
-    }
-
-    return $packet;
+    return $self;
 }
 
 # a very simple sync byte search
