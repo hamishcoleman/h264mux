@@ -6,7 +6,52 @@ use strict;
 #
 
 sub packet_01ba {
-    return pack("C*", 0,0,1,0xba,0x47,0xea,0x9d,0xd4,0x94,1,0,0,0x0f,0xf8);
+    my %params = (
+        SCR => 0,
+        mux_rate => 0,
+        @_
+    );
+
+    my @val = (
+        0,0,1,0xba,
+    );
+
+    # magic val
+    $val[4] |= 0x40;
+
+    # marker bits
+    $val[4] |= 4;
+    $val[6] |= 4;
+    $val[8] |= 4;
+    $val[9] |= 1;
+    $val[12] |= 3;
+
+    #
+    $val[4] |= (($params{SCR} >>30) & 0x7) <<3;
+    $val[4] |= (($params{SCR} >>28) & 0x3);
+    $val[5] |= (($params{SCR} >>20) & 0xff);
+    $val[6] |= (($params{SCR} >>15) & 0x1f) <<3;
+    $val[6] |= (($params{SCR} >>13) & 0x3);
+    $val[7] |= (($params{SCR} >>5) & 0xff);
+    $val[8] |= (($params{SCR}) & 0x1f) <<3;
+
+    if (defined($params{SCR_ext})) {
+        ...;
+        $val[8];
+        $val[9];
+    }
+
+    $val[10] |= (($params{mux_rate} >>15) & 0xff);
+    $val[11] |= (($params{mux_rate} >>6) & 0xff);
+    $val[12] |= (($params{mux_rate}) & 0x3f) <<2;
+
+    # reserved
+    $val[13] |= 0xf8;
+
+    # stuffing length
+    #$val[13] |= 0 & 0x7;
+
+    return pack("C*", @val);
 }
 
 sub packet_01bb {
