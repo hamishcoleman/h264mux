@@ -57,7 +57,7 @@ sub read {
 
     my $buf = $stream->read_bytes($self->length_fixed());
 
-    $self->{val} = $buf;
+    $self->{_data} = $buf;
     return $self;
 }
 

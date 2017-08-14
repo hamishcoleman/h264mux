@@ -31,7 +31,7 @@ sub read {
 
     $self->SUPER::read($stream);
 
-    my @val = unpack('C*',$self->{val}{_data});
+    my @val = unpack('C*',$self->{_data});
 
     my $h = {};
     $h->{PES_Header} = (($val[0] & 0xc0) >>6) == 0x2;
@@ -120,7 +120,7 @@ sub read {
     }
 
     # save the remaining packet data
-    $self->{_pes_data} = substr($self->{val}{_data},$i);
+    $self->{_data_extra} = substr($self->{_data},$i);
 
     $self->{val} = $h;
 

@@ -46,6 +46,9 @@ sub peek_type {
     my $size = 4;
 
     my $buf = $self->peek_bytes($size);
+    if (!defined($buf)) {
+        return undef;
+    }
 
     my $dword = unpack("N",$buf);
 

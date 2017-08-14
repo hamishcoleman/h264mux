@@ -30,7 +30,7 @@ sub read {
 
     $self->SUPER::read($stream);
 
-    my @val = unpack('C*',$self->{val}{_data});
+    my @val = unpack('C*',$self->{_data});
 
     die("bad marker") if ($val[1] & 1 != 1);
 
@@ -74,7 +74,7 @@ sub read {
     }
 
     # save the remaining packet data
-    $self->{_psm_data} = substr($self->{val}{_data},$i);
+    $self->{_data_extra} = substr($self->{_data},$i);
 
     $self->{val} = $h;
 

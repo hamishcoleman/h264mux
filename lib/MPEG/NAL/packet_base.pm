@@ -35,7 +35,11 @@ sub read {
     $stream->{_fh}->seek($self->offset(),0);
 
     my $buf = $stream->read_bytes($self->length_variable());
-    $self->{val} = $buf;
+    if (!defined($buf)) {
+        return undef;
+    }
+
+    $self->{_data} = $buf;
     # TODO - implement 00 00 03 unstuffing
 
     return $self;

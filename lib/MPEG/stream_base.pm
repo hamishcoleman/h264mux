@@ -55,7 +55,8 @@ sub read_bytes {
     my $buf;
     my $count = $self->{_fh}->read($buf,$size);
     if ($count != $size) {
-        die("read size mismatch");
+        warn("read size mismatch");
+        return undef;
     }
     return $buf;
 }
@@ -65,6 +66,10 @@ sub peek_bytes {
     my $size = shift;
 
     my $buf = $self->read_bytes($size);
+    if (!defined($buf)) {
+        return undef;
+    }
+
     $self->{_fh}->seek(-$size,1);
 
     return $buf;
@@ -77,6 +82,9 @@ sub read_packets {
 
     my $packet;
     my $type = $self->peek_type();
+    if (!defined($type)) {
+        return undef;
+    }
 
     my $class;
     if (defined($type)) {

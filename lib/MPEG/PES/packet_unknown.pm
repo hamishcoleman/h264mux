@@ -10,7 +10,7 @@ sub length_fixed { 4; }
 sub to_string {
     my $self = shift;
 
-    my $dword = unpack('N',$self->{val});
+    my $dword = unpack('N',$self->{_data});
 
     my $s = $self->SUPER::to_string();
     $s .= sprintf(" Unknown packet 0x%08x\n", $dword);

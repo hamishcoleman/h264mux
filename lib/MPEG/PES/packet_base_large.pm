@@ -13,7 +13,7 @@ sub read {
     $self->SUPER::read($stream);
 
     # TODO - apply a size threshold to deleting?
-    delete $self->{val}{_data};
+    delete $self->{_data};
 
     return $self;
 }

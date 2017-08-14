@@ -31,7 +31,7 @@ sub read {
 
     $self->SUPER::read($stream);
 
-    my @val = unpack('C*',$self->{val}{_data});
+    my @val = unpack('C*',$self->{_data});
 
     die("bad marker") if (($val[0] & 0x80) == 0);
     die("bad marker") if (($val[2] & 0x01) == 0);
@@ -51,14 +51,14 @@ sub read {
     $i++;
 
     $h->{system_audio_lock_flag}        = ($val[$i] & 0x80) >>7;
-    $h->{system_vidio_lock_flag}        = ($val[$i] & 0x40) >>6;
+    $h->{system_video_lock_flag}        = ($val[$i] & 0x40) >>6;
     $h->{video_bound}                   = ($val[$i] & 0x1f);
     $i++;
 
     $h->{packet_rate_restriction_flag}  = ($val[$i] & 0x80) >>7;
     $i++;
 
-    while (($val[$i] & 0x80) == 0x80) {
+    while ( defined($val[$i]) && (($val[$i] & 0x80) == 0x80)) {
         my $stream = {};
         $stream->{id} = $val[$i];
         $i++;
@@ -75,7 +75,9 @@ sub read {
     }
 
     # save the remaining packet data
-    $self->{_pss_data} = substr($self->{val}{_data},$i);
+    if (length($self->{_data}) > $i) {
+        $self->{_data_extra} = substr($self->{_data},$i);
+    }
 
     $self->{val} = $h;
 

@@ -37,7 +37,12 @@ sub packet_cb {
     }
 
     # FIXME - digging around in object privates
-    $packet->{val} = substr($packet->{val},0,16);
+    if (defined($packet->{_data})) {
+        $packet->{_data} = substr($packet->{_data},0,16);
+    }
+    if (defined($packet->{_data_extra})) {
+        $packet->{_data_extra} = substr($packet->{_data_extra},0,16);
+    }
 }
 
 sub main {

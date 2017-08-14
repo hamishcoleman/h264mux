@@ -17,7 +17,7 @@ sub read {
 
     $self->SUPER::read($stream);
 
-    my @val = unpack('NC*',$self->{val});
+    my @val = unpack('NC*',$self->{_data});
 
     # MPEG1 has different marker here - and different header structure
     die("bad magic") if ($val[0] != $self->sync_value());

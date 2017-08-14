@@ -15,10 +15,10 @@ sub read {
 
     $self->SUPER::read($stream);
 
-    my @val = unpack('N',$self->{val});
+    my @val = unpack('N',$self->{_data});
     die("bad magic") if ($val[0] != $self->sync_value());
 
-    delete $self->{val};
+    delete $self->{_data};
 
     # this pack packet ends the whole stream, so gets unindented
     $self->indent($self->indent()-1);
