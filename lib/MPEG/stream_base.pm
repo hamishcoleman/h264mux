@@ -54,7 +54,7 @@ sub read_bytes {
 
     my $buf;
     my $count = $self->{_fh}->read($buf,$size);
-    if ($count != $size) {
+    if (!defined($count) || $count != $size) {
         warn("read size mismatch");
         return undef;
     }
