@@ -22,23 +22,138 @@ sub packet_01bc {
     );
 }
 
+sub pes_head_pts_dts {
+    my $magic = shift;
+    my $pts = shift;
+
+    my @val;
+
+    $val[0] |= ($magic & 0x0f) <<4;
+
+    # marker bits
+    $val[0] |= 1;
+    $val[2] |= 1;
+    $val[4] |= 1;
+
+    $val[0] |= (($pts >>30) & 0x7) <<1;
+    $val[1] |= (($pts >>22) & 0xff);
+    $val[2] |= (($pts >>15) & 0x7f) <<1;
+    $val[3] |= (($pts >>7) & 0xff);
+    $val[4] |= (($pts) & 0x7f) <<1;
+
+    return @val;
+}
+
+sub pes_head {
+    my %params = (
+        @_
+    );
+    my @val;
+
+    my $tmp = 0;
+
+    #val[0]:
+    $tmp |= 0x80;
+    # PES_scrambling_control
+    # PES_priority
+    # data_alignment_indicator
+    # copyright
+    # original_or_copy
+    push @val, $tmp;
+
+    if (defined($params{PTS})) {
+        if (defined($params{DTS})) {
+            $params{PTS_DTS_flags} = 3;
+        } else {
+            $params{PTS_DTS_flags} = 2;
+        }
+    } elsif (defined($params{DTS})) {
+        ...
+    } else {
+        $params{PTS_DTS_flags} = 0;
+    }
+
+    #val[1]:
+    $tmp |= ($params{PTS_DTS_flags} & 0x3) << 6;
+    # ESCR_flag
+    # ES_rate_flag
+    # DSM_trick_mode_flag
+    # additional_copy_info_flag
+    # PES_CRC_flag
+    # PES_extension_flag
+    push @val, $tmp;
+
+    #val[2]:
+    push @val, 0; # header data length - to fill in later
+
+    # the length of the header with no extensions
+    my $basic_length = scalar(@val);
+
+    # add any extensions
+         if ($params{PTS_DTS_flags} == 0) {
+    } elsif ($params{PTS_DTS_flags} == 2) {
+        ...
+    } elsif ($params{PTS_DTS_flags} == 3) {
+        push @val, pes_head_pts_dts(3, $params{PTS});
+        push @val, pes_head_pts_dts(1, $params{DTS});
+    } else {
+        ...
+    }
+
+    if ($params{ESCR_flag}) {
+        ...
+    }
+
+    if ($params{ES_rate_flag}) {
+        ...
+    }
+
+    if ($params{DSM_trick_mode_flag}) {
+        ...
+    }
+
+    if ($params{additional_copy_info_flag}) {
+        ...
+    }
+
+    if ($params{PES_CRC_flag}) {
+        ...
+    }
+
+    if ($params{PES_extension_flag}) {
+        ...
+    }
+
+    # now we know the header length, patch it back in
+    $val[2] = scalar(@val) - $basic_length;
+
+    return pack("C*", @val);
+}
+
 sub packet_01e0_head {
     my $buflen = shift;
 
+    my @val = (
+        0,0,1,0xe0,0xff,0xe9,
+    );
+
+    my $buf_pes_head = pes_head(
+        DTS => 1051328738,
+        PTS => 1051328738,
+    );
+
     # add the pes header length
-    $buflen += 13;
+    $buflen += length($buf_pes_head);
 
     my @bytes = unpack("CC", pack("n",$buflen));
-
-    my @val = (
-        0,0,1,0xe0,0xff,0xe9,0x80,0xc0,0x0a,0x31,0xfa,0xa9,1,0xc5,0x11,
-        0xfa,0xa9,0x01,0xc5,
-    );
 
     $val[4] = $bytes[0];
     $val[5] = $bytes[1];
 
-    return pack("C*", @val);
+    my $result = pack("C*", @val);
+    $result .= $buf_pes_head;
+
+    return $result;
 }
 
 sub packet_nal_09 {
@@ -47,20 +162,36 @@ sub packet_nal_09 {
     );
 }
 
+# replicating the vlc stream, I need to process random sized chunks
+sub chunk_with_09 {
+    my $packetlen = shift;
+
+    # remove the size of the pes header
+    $packetlen -= 13;
+
+    my $buf_nal_09 = packet_nal_09();
+    my $read_want = $packetlen - length($buf_nal_09);
+
+    my $buf;
+    my $read_got = sysread(STDIN,$buf,$read_want);
+    if ($read_got != $read_want) {
+        die("read size mismatch");
+    }
+
+    my $result = packet_01e0_head($packetlen);
+    $result .= $buf_nal_09;
+    $result .= $buf;
+    return $result;
+}
+
 sub main() {
     print(packet_01ba());
     print(packet_01bb());
     print(packet_01bc());
 
-#    print(packet_01e0_head(6));
-#    print(packet_nal_09());
-    
-    my $buflen = 0xffdc;
-    my $buf;
-    while((my $read = sysread(STDIN,$buf,$buflen))>0) {
-        print(packet_01e0_head($read));
-        print($buf);
-    }
+    print(chunk_with_09(0xffe9));
+    print(chunk_with_09(0x4e58));
+
 }
 unless (caller) {
     main();
