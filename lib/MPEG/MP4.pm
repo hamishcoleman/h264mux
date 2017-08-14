@@ -11,12 +11,22 @@ use MPEG::MP4::packet_unknown;
 
 use MPEG::MP4::container_dinf;
 use MPEG::MP4::container_dref;
+use MPEG::MP4::container_gshh;
+use MPEG::MP4::container_gspm;
+use MPEG::MP4::container_gspu;
+use MPEG::MP4::container_gssd;
+use MPEG::MP4::container_gsst;
+use MPEG::MP4::container_gstd;
+use MPEG::MP4::container_ilst;
 use MPEG::MP4::container_mdia;
+use MPEG::MP4::container_meta;
 use MPEG::MP4::container_minf;
 use MPEG::MP4::container_moov;
-use MPEG::MP4::container_trak;
 use MPEG::MP4::container_stbl;
 use MPEG::MP4::container_stsd;
+use MPEG::MP4::container_trak;
+use MPEG::MP4::container_udta;
+use MPEG::MP4::packet_data;
 use MPEG::MP4::packet_ftyp;
 use MPEG::MP4::packet_hdlr;
 use MPEG::MP4::packet_mdhd;
@@ -28,12 +38,21 @@ sub packet_classname {
     my $type = shift;
 
     my %types = (
+        'data' => 'MPEG::MP4::packet_data',
         'dinf' => 'MPEG::MP4::container_dinf',
         'dref' => 'MPEG::MP4::container_dref',
         'ftyp' => 'MPEG::MP4::packet_ftyp',
+        'gshh' => 'MPEG::MP4::container_gshh',
+        'gspm' => 'MPEG::MP4::container_gspm',
+        'gspu' => 'MPEG::MP4::container_gspu',
+        'gssd' => 'MPEG::MP4::container_gssd',
+        'gsst' => 'MPEG::MP4::container_gsst',
+        'gstd' => 'MPEG::MP4::container_gstd',
         'hdlr' => 'MPEG::MP4::packet_hdlr',
+        'ilst' => 'MPEG::MP4::container_ilst',
         'mdhd' => 'MPEG::MP4::packet_mdhd',
         'mdia' => 'MPEG::MP4::container_mdia',
+        'meta' => 'MPEG::MP4::container_meta',
         'minf' => 'MPEG::MP4::container_minf',
         'moov' => 'MPEG::MP4::container_moov',
         'mvhd' => 'MPEG::MP4::packet_mvhd',
@@ -41,6 +60,7 @@ sub packet_classname {
         'stsd' => 'MPEG::MP4::container_stsd',
         'tkhd' => 'MPEG::MP4::packet_tkhd',
         'trak' => 'MPEG::MP4::container_trak',
+        'udta' => 'MPEG::MP4::container_udta',
     );
 
     my $class = $types{$type};
