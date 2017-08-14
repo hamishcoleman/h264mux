@@ -66,7 +66,10 @@ sub to_string {
     my $self = shift;
 
     my $s = $self->SUPER::to_string();
-    $s .= sprintf(" scr=%i", $self->{val}{scr});
+    $s .= sprintf(" scr=%i bitrate=%i",
+        $self->{val}{scr},
+        $self->{val}{bitrate},
+    );
     return $s;
 }
 
