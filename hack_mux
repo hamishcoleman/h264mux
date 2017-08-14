@@ -134,26 +134,13 @@ sub packet_01e0_head {
     my $buflen = shift;
 
     my @val = (
-        0,0,1,0xe0,0xff,0xe9,
+        0,0,1,0xe0,
     );
 
-    my $buf_pes_head = pes_head(
-        DTS => 1051328738,
-        PTS => 1051328738,
-    );
+    push @val, ($buflen >>8) & 0xff;
+    push @val, ($buflen) & 0xff;
 
-    # add the pes header length
-    $buflen += length($buf_pes_head);
-
-    my @bytes = unpack("CC", pack("n",$buflen));
-
-    $val[4] = $bytes[0];
-    $val[5] = $bytes[1];
-
-    my $result = pack("C*", @val);
-    $result .= $buf_pes_head;
-
-    return $result;
+    return pack("C*", @val);
 }
 
 sub packet_nal_09 {
@@ -163,22 +150,37 @@ sub packet_nal_09 {
 }
 
 # replicating the vlc stream, I need to process random sized chunks
-sub chunk_with_09 {
+sub chunk {
     my $packetlen = shift;
+    my %params = (
+        @_
+    );
 
-    # remove the size of the pes header
-    $packetlen -= 13;
+    my $read_want = $packetlen;
 
-    my $buf_nal_09 = packet_nal_09();
-    my $read_want = $packetlen - length($buf_nal_09);
+    my $buf_pes_head = '';
+    if (defined($params{head})) {
+        $buf_pes_head = pes_head(%params);
+    }
+
+    my $buf_nal_09 = '';
+    if (defined($params{nal_09})) {
+       $buf_nal_09 = packet_nal_09();
+    }
+
+    # remove the sizes of any additional headers
+    $read_want -= length($buf_pes_head);
+    $read_want -= length($buf_nal_09);
 
     my $buf;
     my $read_got = sysread(STDIN,$buf,$read_want);
     if ($read_got != $read_want) {
-        die("read size mismatch");
+        warn("read size mismatch");
+        return undef;
     }
 
     my $result = packet_01e0_head($packetlen);
+    $result .= $buf_pes_head;
     $result .= $buf_nal_09;
     $result .= $buf;
     return $result;
@@ -189,9 +191,45 @@ sub main() {
     print(packet_01bb());
     print(packet_01bc());
 
-    print(chunk_with_09(0xffe9));
-    print(chunk_with_09(0x4e58));
+    my @order = (
+        [0xffe9, head=>1, DTS=>1051328738, PTS=>1051328738, nal_09=>1],
+        [0x4e58, head=>1],
+        [0xffe9, head=>1, DTS=>1051332338, PTS=>1051332338, nal_09=>1],
+        [0x36d2, head=>1],
+        [0x5f44, head=>1, DTS=>1051335938, PTS=>1051335938, nal_09=>1],
+        [0xffe9, head=>1, DTS=>1051339538, PTS=>1051339538, nal_09=>1],
+        [0x5994, head=>1],
+        [0x4512, head=>1, DTS=>1051336886, PTS=>1051336886, nal_09=>1],
+        [0xffe9, head=>1, DTS=>1051340486, PTS=>1051340486, nal_09=>1],
+        [0x413a, head=>1],
+        [0x3d63, head=>1, DTS=>1051344086, PTS=>1051344086, nal_09=>1],
+        [0xffe9, head=>1, DTS=>1051347686, PTS=>1051347686, nal_09=>1],
+        [0x2696, head=>1],
+        [0x36c1, head=>1, DTS=>1051351286, PTS=>1051351286, nal_09=>1],
+        [0xf8c9, head=>1, DTS=>1051354886, PTS=>1051354886, nal_09=>1],
+        [0x6c6b, head=>1, DTS=>1051358486, PTS=>1051358486, nal_09=>1],
+        [0xd851, head=>1, DTS=>1051362086, PTS=>1051362086, nal_09=>1],
+        [0xbf32, head=>1, DTS=>1051365686, PTS=>1051365686, nal_09=>1],
+        [0x7cf3, head=>1, DTS=>1051369286, PTS=>1051369286, nal_09=>1],
+        [0x6695, head=>1, DTS=>1051372886, PTS=>1051372886, nal_09=>1],
+        [0x694f, head=>1, DTS=>1051376486, PTS=>1051376486, nal_09=>1],
+        [0x60ea, head=>1, DTS=>1051380086, PTS=>1051380086, nal_09=>1],
+        [0x61a4, head=>1, DTS=>1051383686, PTS=>1051383686, nal_09=>1],
+        [0x5fcf, head=>1, DTS=>1051387286, PTS=>1051387286, nal_09=>1],
+        [0x5d9c, head=>1, DTS=>1051390886, PTS=>1051390886, nal_09=>1],
+    );
 
+    # follow the given pattern while we can
+    for my $params (@order) {
+        print(chunk(@{$params}));
+    }
+
+    # then just fill the file
+    my $chunk = chunk(0xf000, head=>1);
+    while (defined($chunk)) {
+        print($chunk);
+        $chunk = chunk(0xf000, head=>1);
+    }
 }
 unless (caller) {
     main();
