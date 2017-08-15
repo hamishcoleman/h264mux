@@ -9,8 +9,10 @@ our @ISA = qw(MPEG::stream_base);
 
 use MPEG::MP4::packet_unknown;
 
+use MPEG::MP4::container_avc1;
 use MPEG::MP4::container_dinf;
 use MPEG::MP4::container_dref;
+use MPEG::MP4::container_edts;
 use MPEG::MP4::container_gshh;
 use MPEG::MP4::container_gspm;
 use MPEG::MP4::container_gspu;
@@ -27,20 +29,31 @@ use MPEG::MP4::container_stsd;
 use MPEG::MP4::container_trak;
 use MPEG::MP4::container_udta;
 use MPEG::MP4::packet_data;
+use MPEG::MP4::packet_elst;
 use MPEG::MP4::packet_ftyp;
 use MPEG::MP4::packet_hdlr;
 use MPEG::MP4::packet_mdhd;
 use MPEG::MP4::packet_mvhd;
+use MPEG::MP4::packet_stco;
+use MPEG::MP4::packet_stsc;
+use MPEG::MP4::packet_stss;
+use MPEG::MP4::packet_stsz;
+use MPEG::MP4::packet_stts;
 use MPEG::MP4::packet_tkhd;
+use MPEG::MP4::packet_url;
+use MPEG::MP4::packet_vmhd;
 
 sub packet_classname {
     my $self = shift;
     my $type = shift;
 
     my %types = (
+        'avc1' => 'MPEG::MP4::container_avc1',
         'data' => 'MPEG::MP4::packet_data',
         'dinf' => 'MPEG::MP4::container_dinf',
         'dref' => 'MPEG::MP4::container_dref',
+        'edts' => 'MPEG::MP4::container_edts',
+        'elst' => 'MPEG::MP4::packet_elst',
         'ftyp' => 'MPEG::MP4::packet_ftyp',
         'gshh' => 'MPEG::MP4::container_gshh',
         'gspm' => 'MPEG::MP4::container_gspm',
@@ -57,10 +70,17 @@ sub packet_classname {
         'moov' => 'MPEG::MP4::container_moov',
         'mvhd' => 'MPEG::MP4::packet_mvhd',
         'stbl' => 'MPEG::MP4::container_stbl',
+        'stco' => 'MPEG::MP4::packet_stco',
         'stsd' => 'MPEG::MP4::container_stsd',
+        'stsc' => 'MPEG::MP4::packet_stsc',
+        'stss' => 'MPEG::MP4::packet_stss',
+        'stsz' => 'MPEG::MP4::packet_stsz',
+        'stts' => 'MPEG::MP4::packet_stts',
         'tkhd' => 'MPEG::MP4::packet_tkhd',
         'trak' => 'MPEG::MP4::container_trak',
         'udta' => 'MPEG::MP4::container_udta',
+        'url ' => 'MPEG::MP4::packet_url',
+        'vmhd' => 'MPEG::MP4::packet_vmhd',
     );
 
     my $class = $types{$type};
