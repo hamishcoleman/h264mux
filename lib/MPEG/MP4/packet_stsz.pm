@@ -17,7 +17,7 @@ sub read {
 
     $h{version} = shift @values;
     $h{sample_size} = shift @values;
-    $h{cample_count} = scalar(@values);
+    $h{sample_count} = scalar(@values);
     $h{samples} = \@values;
 
     if ($h{version} != 0) {
