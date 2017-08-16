@@ -94,7 +94,7 @@ sub packet_stsc {
     my $buf = pack('NNNNN',
         0,      # version
         1,      # entry_count
-        0,      # first_chunk[0]
+        1,      # first_chunk[0]
         1793,   # samples_per_chunk[0]
         1,      # sample_description_index[0]
     );
