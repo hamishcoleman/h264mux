@@ -5,6 +5,16 @@ use strict;
 # Read h264 stream and embed it in a mp4 container
 #
 
+# FIXME - calculate these values from the h264 stream
+my $m_duration_secs = 59.766069;
+
+# Some static values for this encoder
+my $mvhd_timescale = 90000;     # set in mvhd, used in tkhd
+my $mdhd_timescale = 1000000;   # set in mdhd, used in stts
+my $stts_sample_delta = 33333;  # set in stts TODO - does this value make sense?
+my $chunks = $m_duration_secs * $mdhd_timescale / $stts_sample_delta;
+                                # used in stts, stsc, stsz
+
 sub packet_generic {
     my $type = shift;
     my @contents = @_;
@@ -45,8 +55,8 @@ sub packet_mvhd {
         0,      # version
         0,      # ctime
         0,      # mtime
-        90000,  # timescale (played with this set to 1)
-        5378946,# duration (played with this set to 0) - FIXME calculate this
+        $mvhd_timescale, # timescale (played with this set to 1)
+        $m_duration_secs * $mvhd_timescale, # duration (plays when set to 0)
         0x10000, # rate
         0x100,  # volume
         0,0,0,  # reserved
@@ -62,8 +72,8 @@ sub packet_mdhd {
         0,      # version
         0,      # ctime
         0,      # mtime
-        1000000,# timescale
-        59766069,# duration (played with this set to 0) FIXME - calculate this
+        $mdhd_timescale, # timescale
+        $m_duration_secs * $mdhd_timescale, # duration (plays when set to 0)
         0,      # lang (actually 1bit pad, 3* 5bit char)
         0,      # pre_defined
     );
@@ -78,7 +88,7 @@ sub packet_tkhd {
         0,      # mtime
         1,      # track_ID
         0,      # reserved
-        5378946,# duration
+        $m_duration_secs * $mvhd_timescale, # duration
         0,0,    # reserved
         0,      # layer
         0,      # alternate_group
@@ -103,8 +113,8 @@ sub packet_stts {
     my $buf = pack('NNNN',
         0,      # version
         1,      # entry_count
-        1793,   # sample_count[0] (played when 0) FIXME - calculate
-        33333,  # sample_delta[0] (interval between samples) FIXME - calculate
+        $chunks, # sample_count[0]
+        $stts_sample_delta, # sample_delta0 (interval between samples)
     );
     return packet_generic('stts',$buf);
 }
@@ -115,7 +125,7 @@ sub packet_stsc {
         0,      # version
         1,      # entry_count
         1,      # first_chunk[0]
-        1793,   # samples_per_chunk[0]
+        $chunks, # samples_per_chunk[0]
         1,      # sample_description_index[0]
     );
     return packet_generic('stsc',$buf);
@@ -125,7 +135,7 @@ sub packet_stsz {
     my $buf = pack('NNNN*',
         0,      # version
         0,      # sample_size
-        1793,   # sample_count
+        $chunks, # sample_count
     # FIXME - these need to be calculated from something, but for now, copy
     # from a sample streammx
   85547, 79525, 24369, 88423, 17663, 82189, 15696, 75369, 13998, 63670,
@@ -322,7 +332,7 @@ sub packet_stco {
 }
 
 sub print_packet_mdat {
-    my $length = 37525873; # size of my sample stream
+    my $length = 37525873; # size of my sample stream - FIXME
     my $head = pack('Na4',
         $length +4 +4,
         'mdat'
