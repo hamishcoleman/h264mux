@@ -70,6 +70,27 @@ sub packet_mdhd {
     return packet_generic('mdhd',$buf);
 }
 
+sub packet_tkhd {
+    my $buf = pack('CC3NNNNNN2nnnnN9NN',
+        0,      # version
+        0,0,1,  # flags 0x1==track_enabled
+        0,      # ctime
+        0,      # mtime
+        1,      # track_ID
+        0,      # reserved
+        5378946,# duration
+        0,0,    # reserved
+        0,      # layer
+        0,      # alternate_group
+        0,      # volume
+        0,      # reserved
+        0x10000,0,0,0,0x10000,0,0,0,0x40000000, # matrix
+        0x5000000, # width
+        0x2d00000, # height (both abstract units, used for aspect ratio)
+    );
+    return packet_generic('tkhd',$buf);
+}
+
 sub packet_avcC {
     my $unk = pack('C*',
         # all unknown
@@ -355,7 +376,7 @@ sub main() {
     print(container_moov(
         packet_mvhd(),
         container_trak(
-            packet_padb(0x54), # in place of tkhd
+            packet_tkhd(),
             packet_padb(0x1c), # in place of edts
             container_mdia(
                 packet_mdhd(),
