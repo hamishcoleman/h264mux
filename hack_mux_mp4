@@ -45,14 +45,14 @@ sub packet_mvhd {
         0,      # version
         0,      # ctime
         0,      # mtime
-        1,      # timescale
-        0,      # duration
+        90000,  # timescale (played with this set to 1)
+        5378946,# duration (played with this set to 0) - FIXME calculate this
         0x10000, # rate
         0x100,  # volume
         0,0,0,  # reserved
         0x10000,0,0,0,0x10000,0,0,0,0x40000000, # matrix
         0,0,0,0,0,0,    # pre_defined ??
-        1,      # next_track_ID
+        2,      # next_track_ID
     );
     return packet_generic('mvhd',$buf);
 }
@@ -63,7 +63,7 @@ sub packet_mdhd {
         0,      # ctime
         0,      # mtime
         1000000,# timescale
-        0,      # duration
+        59766069,# duration (played with this set to 0) FIXME - calculate this
         0,      # lang (actually 1bit pad, 3* 5bit char)
         0,      # pre_defined
     );
@@ -71,20 +71,19 @@ sub packet_mdhd {
 }
 
 sub packet_avcC {
-    my $buf = pack('C4nC',
-        1,0,0,0,        # all unknown
-        0xff00,
-        0,
+    my $unk = pack('C*',
+        # all unknown
+        1,0x4d,0x40,0x1e,0xff,0xe0,0
     );
-    return packet_generic('avcC',$buf);
+    return packet_generic('avcC',$unk);
 }
 
 sub packet_stts {
     my $buf = pack('NNNN',
         0,      # version
         1,      # entry_count
-        0,      # sample_count[0]
-        40000,  # sample_delta[0] (interval between samples)
+        1793,   # sample_count[0] (played when 0) FIXME - calculate
+        33333,  # sample_delta[0] (interval between samples) FIXME - calculate
     );
     return packet_generic('stts',$buf);
 }
@@ -296,13 +295,13 @@ sub packet_stco {
     my $buf = pack('NNN',
         0,      # version
         1,      # entry_count
-        0x1da1+8,       # chunk_offset[0] - FIXME, needs to be calculated
+        0x1f05+8,       # chunk_offset[0] - FIXME, needs to be calculated
     );
     return packet_generic('stco',$buf);
 }
 
 sub print_packet_mdat {
-    my $length = 37614391; # size of my sample stream
+    my $length = 37525873; # size of my sample stream
     my $head = pack('Na4',
         $length +4 +4,
         'mdat'
@@ -326,7 +325,14 @@ sub container_avc1 {
         0,0,0,0,0,0,    # reserved
         1,      # data_reference_index
     );
-    return packet_generic('avc1',$buf,"\000"x0x46,@_);
+    my $unk = pack('C*',
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        5,0,2,0xd0,0,0x48,0,0,0,0x48,0,0,0,0,0,0,
+        0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0x18,0xff,0xff,
+    );
+    return packet_generic('avc1',$buf,$unk,@_);
 }
 
 sub container_stsd {
@@ -349,9 +355,14 @@ sub main() {
     print(container_moov(
         packet_mvhd(),
         container_trak(
+            packet_padb(0x54), # in place of tkhd
+            packet_padb(0x1c), # in place of edts
             container_mdia(
                 packet_mdhd(),
+                packet_padb(0x25), # in place of hdlr
                 container_minf(
+                    packet_padb(0x0c), # in place of vmhd
+                    packet_padb(0x1c), # in place of dinf
                     container_stbl(
                         container_stsd(
                             container_avc1(
@@ -359,6 +370,7 @@ sub main() {
                             ),
                         ),
                         packet_stts(),
+                        packet_padb(0x44), # in place of stss
                         packet_stsc(),
                         packet_stsz(),
                         packet_stco(),
@@ -366,8 +378,9 @@ sub main() {
                 ),
             ),
         ),
+        packet_padb(0x23), # in place of udta
     ));
-    #print(packet_padb(10));
+    print(packet_padb(0)); # in place of wide
     print_packet_mdat();
 }
 unless (caller) {
