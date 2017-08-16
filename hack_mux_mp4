@@ -7,6 +7,7 @@ use strict;
 
 # FIXME - calculate these values from the h264 stream
 my $m_duration_secs = 59.766069;
+my $m_size_bytes = 37525873;
 
 # Some static values for this encoder
 my $mvhd_timescale = 90000;     # set in mvhd, used in tkhd
@@ -95,7 +96,7 @@ sub packet_tkhd {
         0,      # volume
         0,      # reserved
         0x10000,0,0,0,0x10000,0,0,0,0x40000000, # matrix
-        0x5000000, # width
+        0x5000000, # width - TODO calculate these two
         0x2d00000, # height (both abstract units, used for aspect ratio)
     );
     return packet_generic('tkhd',$buf);
@@ -332,7 +333,7 @@ sub packet_stco {
 }
 
 sub print_packet_mdat {
-    my $length = 37525873; # size of my sample stream - FIXME
+    my $length = $m_size_bytes; # size of my sample stream
     my $head = pack('Na4',
         $length +4 +4,
         'mdat'
