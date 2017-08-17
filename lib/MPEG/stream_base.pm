@@ -3,6 +3,7 @@ use warnings;
 use strict;
 
 use IO::File;
+use BufferedStream;
 
 sub new {
     my $class = shift;
@@ -16,6 +17,11 @@ sub new {
 sub open {
     my $self = shift;
     my $filename = shift;
+    if ($filename eq '-') {
+        $self->{_fh} = BufferedStream->new();
+        $self->{_fh}->open_fh(\*STDIN);
+        return $self;
+    }
     my $fh = IO::File->new($filename,"r");
     if (!defined($fh)) {
         die("Could not open $filename: $!");
