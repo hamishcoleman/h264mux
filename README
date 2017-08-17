@@ -37,3 +37,19 @@ dump_mpegps
     conversion above (and is understood by far more programs than the NAL
     stream is)
 
+dump_mpeg4
+    Dump out the component packets seen in a MP4 file
+
+hack_mux_mpeg2pes
+    A quick and dirty hack to take a h264 NAL file and wrap it in a MPEG2
+    PES stream.
+
+hack_mux_mp4
+    A quick and dirty hack to take a h264 NAL file and wrap it in a MP4
+    container.
+
+Generating test data:
+Some example commands I have used for generating my test files:
+    raspivid -o - -t 60000 -vf -hf -w 1280 -h 720 \
+        -fps 25 -ih -g 25 >test.03.raspivid.out
+
