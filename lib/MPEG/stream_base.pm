@@ -54,9 +54,16 @@ sub read_bytes {
 
     my $buf;
     my $count = $self->{_fh}->read($buf,$size);
-    if (!defined($count) || $count != $size) {
-        warn("read size mismatch");
+    if (!defined($count)) {
+        die("read error");
+    }
+    if ($count == 0) {
+        # no data left
         return undef;
+    }
+    if ($count != $size) {
+        # could just be the end of the data
+        warn("read size mismatch");
     }
     return $buf;
 }
@@ -77,8 +84,6 @@ sub peek_bytes {
 
 sub read_packets {
     my $self = shift;
-
-    return undef if $self->{_fh}->eof();
 
     my $packet;
     my $type = $self->peek_type();
@@ -116,7 +121,7 @@ sub resync {
     my $self = shift;
     my $sync_value = $self->packet_sync_value();
 
-    while(!$self->{_fh}->eof()) {
+    while(1) {
         my $type = $self->peek_type();
         if (defined($type)) {
             return $self;

@@ -101,6 +101,9 @@ sub peek_type {
     my $size = 8;
 
     my $buf = $self->peek_bytes($size);
+    if (!defined($buf)) {
+        return undef;
+    }
 
     my ($length, $type) = unpack("Na4",$buf);
 

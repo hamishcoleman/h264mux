@@ -23,24 +23,23 @@ sub read {
     $self->offset($stream->current_offset());
 
     # skip the current packet header marker
-    $stream->read_bytes(4);
+    my $packet = $stream->read_bytes(4);
+    if (!defined($packet)) {
+        return undef;
+    }
 
     # find the next header
-    $stream->resync();
-
-    my $offset_end = $stream->current_offset();
-    $self->length_variable($offset_end - $self->offset());
-
-    # FIXME - digging around in object privates
-    $stream->{_fh}->seek($self->offset(),0);
-
-    my $buf = $stream->read_bytes($self->length_variable());
+    my $buf = $stream->resync();
     if (!defined($buf)) {
         return undef;
     }
 
-    $self->{_data} = $buf;
-    # TODO - implement 00 00 03 unstuffing
+    $packet .= $buf;
+
+    $self->length_variable(length($packet));
+
+    $self->{_data} = $packet;
+    # TODO - implement 00 00 03 unstuffing ?
 
     return $self;
 }
