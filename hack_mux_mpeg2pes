@@ -220,10 +220,10 @@ sub chunk_01e0 {
 
     my $buf;
     my $read_got = sysread(STDIN,$buf,$read_want);
-    if ($read_got != $read_want) {
-        warn("read size mismatch");
-        return undef;
-    }
+#    if ($read_got != $read_want) {
+#        warn("read size mismatch");
+#        return undef;
+#    }
 
     $buf = $buf_pes_head . $buf_nal_09 . $buf;
     my $result = packet_01e0_head(length($buf));
