@@ -13,153 +13,10 @@ my $m_fps = 30; # This probably needs to be on the cmdline - TODO ?!?
                 # doesnt have any timing_info_present, so we cannot get that
                 # from the incoming stream :-(
 
-# Some static values for this encoder
-my $mvhd_timescale = 90000;     # set in mvhd, used in tkhd
-my $mdhd_timescale = 1000000;   # set in mdhd, used in stts
-my $stts_sample_delta = $mdhd_timescale/$m_fps;  # set in stts
-my $samples = ($m_duration_secs * $mdhd_timescale / $stts_sample_delta)+1;
-                                # used in stts, stsc, stsz
-
-use File::Spec;
-
-# allow the libs to be in the bin dir
-use FindBin;
-use lib File::Spec->catdir($FindBin::RealBin,"lib");
-use lib File::Spec->catdir($ENV{HOME},"s/bin/lib");
-
-use Data::Dumper;
-$Data::Dumper::Indent = 1;
-$Data::Dumper::Sortkeys = 1;
-$Data::Dumper::Quotekeys = 0;
-
-use MPEG::NAL;
-
-
-
-sub packet_generic {
-    my $type = shift;
-    my @contents = @_;
-
-    my $length;
-    for my $fragment (@contents) {
-        $length += length($fragment);
-    }
-
-    # add in size and type header
-    $length += 4 + 4;
-
-    my $length_buf = pack('N',$length);
-
-    die("bad type len") if (length($type) != 4);
-
-    return ($length_buf,$type,@contents);
-}
-
-sub packet_ftyp {
-    my $buf = pack('a4N(a4)2',
-        'isom', # major_brand
-        0,      # minor_version
-        'mp41', 'avc1'
-    );
-
-    return packet_generic('ftyp',$buf);
-}
-
-sub packet_padb {
-    my $size = shift;
-    my $buf = "\000"x$size;
-    return packet_generic('padb',$buf);
-}
-
-sub packet_mvhd {
-    my $buf = pack('NNNNNNnnN2N9N6N',
-        0,      # version
-        0,      # ctime
-        0,      # mtime
-        $mvhd_timescale, # timescale (played with this set to 1)
-        $m_duration_secs * $mvhd_timescale, # duration (plays when set to 0)
-        0x10000, # rate
-        0x100,  # volume
-        0,0,0,  # reserved
-        0x10000,0,0,0,0x10000,0,0,0,0x40000000, # matrix
-        0,0,0,0,0,0,    # pre_defined ??
-        2,      # next_track_ID
-    );
-    return packet_generic('mvhd',$buf);
-}
-
-sub packet_mdhd {
-    my $buf = pack('NNNNNnn',
-        0,      # version
-        0,      # ctime
-        0,      # mtime
-        $mdhd_timescale, # timescale
-        $m_duration_secs * $mdhd_timescale, # duration (plays when set to 0)
-        0,      # lang (actually 1bit pad, 3* 5bit char)
-        0,      # pre_defined
-    );
-    return packet_generic('mdhd',$buf);
-}
-
-sub packet_tkhd {
-    my $buf = pack('CC3NNNNNN2nnnnN9NN',
-        0,      # version
-        0,0,1,  # flags 0x1==track_enabled
-        0,      # ctime
-        0,      # mtime
-        1,      # track_ID
-        0,      # reserved
-        $m_duration_secs * $mvhd_timescale, # duration
-        0,0,    # reserved
-        0,      # layer
-        0,      # alternate_group
-        0,      # volume
-        0,      # reserved
-        0x10000,0,0,0,0x10000,0,0,0,0x40000000, # matrix
-        0x5000000, # width - TODO calculate these two
-        0x2d00000, # height (both abstract units, used for aspect ratio)
-    );
-    return packet_generic('tkhd',$buf);
-}
-
-sub packet_avcC {
-    my $unk = pack('C*',
-        # all unknown
-        1,0x4d,0x40,0x1e,0xff,0xe0,0
-    );
-    return packet_generic('avcC',$unk);
-}
-
-sub packet_stts {
-    my $buf = pack('NNNN',
-        0,      # version
-        1,      # entry_count
-        $samples, # sample_count[0]
-        $stts_sample_delta, # sample_delta0 (interval between samples)
-    );
-    return packet_generic('stts',$buf);
-}
-
-sub packet_stsc {
-    # Sample to chunk list
-    my $buf = pack('NNNNN',
-        0,      # version
-        1,      # entry_count
-        1,      # first_chunk[0]
-        $samples, # samples_per_chunk[0]
-        1,      # sample_description_index[0]
-    );
-    return packet_generic('stsc',$buf);
-}
-
-sub packet_stsz {
-    my $buf = pack('NNNN*',
-        0,      # version
-        0,      # sample_size
-        $samples, # sample_count
-    # TODO - calculate these
-    # - each entry is the offset in the mdat to the next 'sample'
-    # - it looks like samples are - for all intents - 'frames
+# TODO - calculate these
+# - each entry is the offset in the mdat to the next 'sample'
+# - it looks like samples are - for all intents - 'frames
+my @stsz_offsets = (
   85547, 79525, 24369, 88423, 17663, 82189, 15696, 75369, 13998, 63670,
   27736, 55358, 48927, 31968, 26242, 26940, 24791, 24977, 24508, 23945,
   23245, 23289, 22946, 22883, 22691, 22621, 22221, 22684, 22576, 22542,
@@ -340,6 +197,153 @@ sub packet_stsz {
   17849, 18130, 18720, 18279, 17977, 17917, 17705, 17531, 17705, 17793,
   17630, 17551, 18097, 18208, 17892, 17847, 17882, 17929, 18106, 17960,
   17853, 17782, 17807,
+);
+
+# Some static values for this encoder
+my $mvhd_timescale = 90000;     # set in mvhd, used in tkhd
+my $mdhd_timescale = 1000000;   # set in mdhd, used in stts
+my $stts_sample_delta = $mdhd_timescale/$m_fps;  # set in stts
+my $samples = ($m_duration_secs * $mdhd_timescale / $stts_sample_delta)+1;
+                                # used in stts, stsc, stsz
+
+use File::Spec;
+
+# allow the libs to be in the bin dir
+use FindBin;
+use lib File::Spec->catdir($FindBin::RealBin,"lib");
+use lib File::Spec->catdir($ENV{HOME},"s/bin/lib");
+
+use Data::Dumper;
+$Data::Dumper::Indent = 1;
+$Data::Dumper::Sortkeys = 1;
+$Data::Dumper::Quotekeys = 0;
+
+use MPEG::NAL;
+
+
+
+sub packet_generic {
+    my $type = shift;
+    my @contents = @_;
+
+    my $length;
+    for my $fragment (@contents) {
+        $length += length($fragment);
+    }
+
+    # add in size and type header
+    $length += 4 + 4;
+
+    my $length_buf = pack('N',$length);
+
+    die("bad type len") if (length($type) != 4);
+
+    return ($length_buf,$type,@contents);
+}
+
+sub packet_ftyp {
+    my $buf = pack('a4N(a4)2',
+        'isom', # major_brand
+        0,      # minor_version
+        'mp41', 'avc1'
+    );
+
+    return packet_generic('ftyp',$buf);
+}
+
+sub packet_padb {
+    my $size = shift;
+    my $buf = "\000"x$size;
+    return packet_generic('padb',$buf);
+}
+
+sub packet_mvhd {
+    my $buf = pack('NNNNNNnnN2N9N6N',
+        0,      # version
+        0,      # ctime
+        0,      # mtime
+        $mvhd_timescale, # timescale (played with this set to 1)
+        $m_duration_secs * $mvhd_timescale, # duration (plays when set to 0)
+        0x10000, # rate
+        0x100,  # volume
+        0,0,0,  # reserved
+        0x10000,0,0,0,0x10000,0,0,0,0x40000000, # matrix
+        0,0,0,0,0,0,    # pre_defined ??
+        2,      # next_track_ID
+    );
+    return packet_generic('mvhd',$buf);
+}
+
+sub packet_mdhd {
+    my $buf = pack('NNNNNnn',
+        0,      # version
+        0,      # ctime
+        0,      # mtime
+        $mdhd_timescale, # timescale
+        $m_duration_secs * $mdhd_timescale, # duration (plays when set to 0)
+        0,      # lang (actually 1bit pad, 3* 5bit char)
+        0,      # pre_defined
+    );
+    return packet_generic('mdhd',$buf);
+}
+
+sub packet_tkhd {
+    my $buf = pack('CC3NNNNNN2nnnnN9NN',
+        0,      # version
+        0,0,1,  # flags 0x1==track_enabled
+        0,      # ctime
+        0,      # mtime
+        1,      # track_ID
+        0,      # reserved
+        $m_duration_secs * $mvhd_timescale, # duration
+        0,0,    # reserved
+        0,      # layer
+        0,      # alternate_group
+        0,      # volume
+        0,      # reserved
+        0x10000,0,0,0,0x10000,0,0,0,0x40000000, # matrix
+        0x5000000, # width - TODO calculate these two
+        0x2d00000, # height (both abstract units, used for aspect ratio)
+    );
+    return packet_generic('tkhd',$buf);
+}
+
+sub packet_avcC {
+    my $unk = pack('C*',
+        # all unknown
+        1,0x4d,0x40,0x1e,0xff,0xe0,0
+    );
+    return packet_generic('avcC',$unk);
+}
+
+sub packet_stts {
+    my $buf = pack('NNNN',
+        0,      # version
+        1,      # entry_count
+        $samples, # sample_count[0]
+        $stts_sample_delta, # sample_delta0 (interval between samples)
+    );
+    return packet_generic('stts',$buf);
+}
+
+sub packet_stsc {
+    # Sample to chunk list
+    my $buf = pack('NNNNN',
+        0,      # version
+        1,      # entry_count
+        1,      # first_chunk[0]
+        $samples, # samples_per_chunk[0]
+        1,      # sample_description_index[0]
+    );
+    return packet_generic('stsc',$buf);
+}
+
+sub packet_stsz {
+    my $buf = pack('NNNN*',
+        0,      # version
+        0,      # sample_size
+        $samples, # sample_count
+        @stsz_offsets,
     );
     return packet_generic('stsz',$buf);
 }
@@ -364,18 +368,17 @@ sub print_packet_mdat {
 
     my $stream = MPEG::NAL->new();
     $stream->open($ARGV[0]);
-    #$ps->resync();
+
+    # remove the hardcoded list and prepare for using our calculated list
+    @stsz_offsets = ();
 
     # TODO:
     # each sample in stsz is the length of a group of packet_27,28,25
     # or a packet_21.
     # the sample pointer points at the inserted packet_27, the packet_25 is
     # still present in the stream, but no sample points at it.
-    my $packet_25_seen = 0;
     my $packet_27;
-    my $packet_27_seen = 0;
     my $packet_28;
-    my $packet_28_seen = 0;
 
     my $got_length=0;
     while(1) {
@@ -396,25 +399,25 @@ sub print_packet_mdat {
         # FIXME - types are only part of this field
         if ($type == 0x27) {
             $packet_27 = $buf;
-            $packet_27_seen++;
+            next;
         }
         if ($type == 0x28) {
             $packet_28 = $buf;
-            $packet_28_seen++;
+            next;
         }
 
         # TODO
-        # - could avoid this dance if the raspivid command is using "-ih"
+        # - could avoid this dance if the raspivid command is always using "-ih"
         if ($type == 0x25) {
-            $packet_25_seen++;
-            if ($packet_25_seen>$packet_28_seen) {
+            if ($packet_28) {
                 $buf = $packet_28 . $buf;
             }
-            if ($packet_25_seen>$packet_27_seen) {
+            if ($packet_27) {
                 $buf = $packet_27 . $buf;
             }
         }
 
+        push @stsz_offsets, length($buf);
         $got_length += length($buf);
         print($buf);
 
