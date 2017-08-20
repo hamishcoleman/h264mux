@@ -24,6 +24,7 @@ sub packet_cb {
 
     # FIXME - need an option processor
     my $output_bin = 0;
+    my $output_val = 1;
 
     if ($output_bin) {
         # FIXME - digging around in packets
@@ -32,8 +33,17 @@ sub packet_cb {
         if (defined($data)) {
             printf("%s",$data);
         }
-    } else {
-        printf("%s\n",$packet->to_string());
+        return;
+    }
+
+    printf("%s\n",$packet->to_string());
+
+    # FIXME - digging around in object privates
+    if ($output_val && defined($packet->{val})) {
+        my $oldpad = $Data::Dumper::Pad;
+        $Data::Dumper::Pad = $packet->_extra_indent();
+        print Dumper($packet->{val});
+        $Data::Dumper::Pad = $oldpad;
     }
 
     # FIXME - digging around in object privates

@@ -38,16 +38,4 @@ sub read {
     return $self;
 }
 
-sub to_string {
-    my $self = shift;
-
-    my $s = $self->SUPER::to_string();
-    for my $key (sort(keys(%{$self->{val}}))) {
-        my $val = $self->{val}{$key};
-        $s .= "\n" . $self->_extra_indent();
-        $s .= sprintf("%s = %s", $key, $val);
-    }
-    return $s;
-}
-
 1;
