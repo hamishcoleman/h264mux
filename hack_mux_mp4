@@ -345,10 +345,11 @@ sub packet_stsz {
 }
 
 sub packet_stco {
+    my $offset = shift;
     my $buf = pack('NNN',
         0,      # version
         1,      # entry_count
-        0x1f05+8,       # chunk_offset[0] - FIXME, needs to be calculated
+        $offset, # chunk_offset[0]
     );
     return packet_generic('stco',$buf);
 }
@@ -480,7 +481,7 @@ sub main() {
                         packet_padb(0x44), # in place of stss
                         packet_stsc(),
                         packet_stsz(),
-                        packet_stco(),
+                        packet_stco(0x1f05+8), # FIXME - needs to be calculated
                     ),
                 ),
             ),
