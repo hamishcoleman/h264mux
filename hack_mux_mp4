@@ -416,6 +416,11 @@ sub print_packet_mdat {
 
         $got_length += length($buf);
         print($buf);
+
+        # if we have exactly how much we are hardcoded to expect, stop
+        if ($got_length == $length) {
+            last;
+        }
     }
 
     die("length got $got_length want $length") if ($length != $got_length);
