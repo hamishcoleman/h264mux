@@ -458,7 +458,8 @@ sub container_moov { return packet_generic('moov',@_); }
 sub container_stbl { return packet_generic('stbl',@_); }
 sub container_trak { return packet_generic('trak',@_); }
 
-sub main() {
+# Generate an output file in quickstart order
+sub main_quickstart() {
     print(packet_ftyp());
     print(container_moov(
         packet_mvhd(),
@@ -490,6 +491,41 @@ sub main() {
     ));
     print(packet_padb(0)); # in place of wide
     print_packet_mdat();
+}
+
+# Generate an output in the order that requires no seeking
+sub main() {
+    print(packet_ftyp());
+    print(packet_padb(0)); # in place of wide
+    print_packet_mdat();
+    print(container_moov(
+        packet_mvhd(),
+        container_trak(
+            packet_tkhd(),
+            packet_padb(0x1c), # in place of edts
+            container_mdia(
+                packet_mdhd(),
+                packet_padb(0x25), # in place of hdlr
+                container_minf(
+                    packet_padb(0x0c), # in place of vmhd
+                    packet_padb(0x1c), # in place of dinf
+                    container_stbl(
+                        container_stsd(
+                            container_avc1(
+                                packet_avcC(),
+                            ),
+                        ),
+                        packet_stts(),
+                        packet_padb(0x44), # in place of stss
+                        packet_stsc(),
+                        packet_stsz(),
+                        packet_stco(0x20+8), # FIXME - needs to be calculated
+                    ),
+                ),
+            ),
+        ),
+        packet_padb(0x23), # in place of udta
+    ));
 }
 unless (caller) {
     main();
