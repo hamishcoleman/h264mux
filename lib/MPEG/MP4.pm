@@ -23,9 +23,12 @@ use MPEG::MP4::container_ilst;
 use MPEG::MP4::container_mdia;
 use MPEG::MP4::container_meta;
 use MPEG::MP4::container_minf;
+use MPEG::MP4::container_moof;
 use MPEG::MP4::container_moov;
+use MPEG::MP4::container_mvex;
 use MPEG::MP4::container_stbl;
 use MPEG::MP4::container_stsd;
+use MPEG::MP4::container_traf;
 use MPEG::MP4::container_trak;
 use MPEG::MP4::container_udta;
 use MPEG::MP4::packet_data;
@@ -33,13 +36,18 @@ use MPEG::MP4::packet_elst;
 use MPEG::MP4::packet_ftyp;
 use MPEG::MP4::packet_hdlr;
 use MPEG::MP4::packet_mdhd;
+use MPEG::MP4::packet_mfhd;
 use MPEG::MP4::packet_mvhd;
 use MPEG::MP4::packet_stco;
 use MPEG::MP4::packet_stsc;
 use MPEG::MP4::packet_stss;
 use MPEG::MP4::packet_stsz;
 use MPEG::MP4::packet_stts;
+use MPEG::MP4::packet_tfdt;
+use MPEG::MP4::packet_tfhd;
 use MPEG::MP4::packet_tkhd;
+use MPEG::MP4::packet_trex;
+use MPEG::MP4::packet_trun;
 use MPEG::MP4::packet_url;
 use MPEG::MP4::packet_vmhd;
 
@@ -66,8 +74,11 @@ sub packet_classname {
         'mdhd' => 'MPEG::MP4::packet_mdhd',
         'mdia' => 'MPEG::MP4::container_mdia',
         'meta' => 'MPEG::MP4::container_meta',
+        'mfhd' => 'MPEG::MP4::packet_mfhd',
         'minf' => 'MPEG::MP4::container_minf',
+        'moof' => 'MPEG::MP4::container_moof',
         'moov' => 'MPEG::MP4::container_moov',
+        'mvex' => 'MPEG::MP4::container_mvex',
         'mvhd' => 'MPEG::MP4::packet_mvhd',
         'stbl' => 'MPEG::MP4::container_stbl',
         'stco' => 'MPEG::MP4::packet_stco',
@@ -76,8 +87,13 @@ sub packet_classname {
         'stss' => 'MPEG::MP4::packet_stss',
         'stsz' => 'MPEG::MP4::packet_stsz',
         'stts' => 'MPEG::MP4::packet_stts',
+        'tfdt' => 'MPEG::MP4::packet_tfdt',
+        'tfhd' => 'MPEG::MP4::packet_tfhd',
         'tkhd' => 'MPEG::MP4::packet_tkhd',
+        'traf' => 'MPEG::MP4::container_traf',
         'trak' => 'MPEG::MP4::container_trak',
+        'trex' => 'MPEG::MP4::packet_trex',
+        'trun' => 'MPEG::MP4::packet_trun',
         'udta' => 'MPEG::MP4::container_udta',
         'url ' => 'MPEG::MP4::packet_url',
         'vmhd' => 'MPEG::MP4::packet_vmhd',
