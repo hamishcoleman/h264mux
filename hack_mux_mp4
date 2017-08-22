@@ -251,10 +251,10 @@ sub packet_ftyp {
     return packet_generic('ftyp',$buf);
 }
 
-sub packet_padb {
+sub packet_padding {
     my $size = shift;
     my $buf = "\000"x$size;
-    return packet_generic('padb',$buf);
+    return packet_generic('____',$buf);
 }
 
 sub packet_mvhd {
@@ -468,13 +468,13 @@ sub main_quickstart() {
         packet_mvhd(),
         container_trak(
             packet_tkhd(),
-            packet_padb(0x1c), # in place of edts
+            packet_padding(0x1c), # in place of edts
             container_mdia(
                 packet_mdhd(),
-                packet_padb(0x25), # in place of hdlr
+                packet_padding(0x25), # in place of hdlr
                 container_minf(
-                    packet_padb(0x0c), # in place of vmhd
-                    packet_padb(0x1c), # in place of dinf
+                    packet_padding(0x0c), # in place of vmhd
+                    packet_padding(0x1c), # in place of dinf
                     container_stbl(
                         container_stsd(
                             container_avc1(
@@ -482,7 +482,7 @@ sub main_quickstart() {
                             ),
                         ),
                         packet_stts(),
-                        packet_padb(0x44), # in place of stss
+                        packet_padding(0x44), # in place of stss
                         packet_stsc(),
                         packet_stsz(),
                         packet_stco(0x1f05+8), # FIXME - needs to be calculated
@@ -490,28 +490,28 @@ sub main_quickstart() {
                 ),
             ),
         ),
-        packet_padb(0x23), # in place of udta
+        packet_padding(0x23), # in place of udta
     ));
-    print(packet_padb(0)); # in place of wide
+    print(packet_padding(0)); # in place of wide
     print_packet_mdat();
 }
 
 # Generate an output in the order that requires no seeking
 sub main() {
     print(packet_ftyp());
-    print(packet_padb(0)); # in place of wide
+    print(packet_padding(0)); # in place of wide
     print_packet_mdat();
     print(container_moov(
         packet_mvhd(),
         container_trak(
             packet_tkhd(),
-            packet_padb(0x1c), # in place of edts
+            packet_padding(0x1c), # in place of edts
             container_mdia(
                 packet_mdhd(),
-                packet_padb(0x25), # in place of hdlr
+                packet_padding(0x25), # in place of hdlr
                 container_minf(
-                    packet_padb(0x0c), # in place of vmhd
-                    packet_padb(0x1c), # in place of dinf
+                    packet_padding(0x0c), # in place of vmhd
+                    packet_padding(0x1c), # in place of dinf
                     container_stbl(
                         container_stsd(
                             container_avc1(
@@ -519,7 +519,7 @@ sub main() {
                             ),
                         ),
                         packet_stts(),
-                        packet_padb(0x44), # in place of stss
+                        packet_padding(0x44), # in place of stss
                         packet_stsc(),
                         packet_stsz(),
                         packet_stco(0x20+8), # FIXME - needs to be calculated
@@ -527,7 +527,7 @@ sub main() {
                 ),
             ),
         ),
-        packet_padb(0x23), # in place of udta
+        packet_padding(0x23), # in place of udta
     ));
 }
 unless (caller) {
