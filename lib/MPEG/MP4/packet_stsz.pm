@@ -23,9 +23,6 @@ sub read {
     if ($h{version} != 0) {
         ...
     }
-    if ($h{sample_size} != 0) {
-        ...
-    }
 
     $self->{val} = \%h;
 
