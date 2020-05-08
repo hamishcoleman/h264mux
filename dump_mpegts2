@@ -1,0 +1,98 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+#
+# Quick and dirty TS dumper
+#
+
+use IO::File;
+
+use Data::Dumper;
+$Data::Dumper::Indent = 1;
+$Data::Dumper::Sortkeys = 1;
+$Data::Dumper::Quotekeys = 0;
+
+sub handle_packet {
+    my $buf = shift;
+    my $db = {};
+
+    my ($sync, $pid_hi, $pid_lo, $cc, $rest) = unpack("C4a*",$buf);
+    $buf = $rest;
+
+    if ($sync != 0x47) {
+        die("sync error");
+    }
+
+    $db->{TEI} = ($pid_hi & 0x80) ? "T":" ";
+    $db->{PUSI} = ($pid_hi & 0x40) ? "P":" ";
+    $db->{pri} = ($pid_hi & 0x20) ? "U":" ";
+    $db->{pid} = (($pid_hi & 0x1f) <<8) | $pid_lo;
+    #$db->{TSC} = ($cc & 0xc0) >> 6;
+    $db->{adaptation} = ($cc & 0x30) >> 4;
+    $db->{counter} = ($cc & 0xf);
+
+    my $flags_pkt = $db->{TEI}.$db->{PUSI}.$db->{pri};
+    printf("PKT:%s:%04x:%x ", $flags_pkt, $db->{pid}, $db->{counter});
+
+    if ($db->{adaptation} >1) {
+        my ($len, $flags, $rest) = unpack("CCa*", $buf);
+        $buf = $rest;
+
+        printf("A%02x ",$len);
+
+        if ($len < 1) {
+            die("unexpected adaptation length");
+        }
+
+        if ($flags != 0 && $flags != 0x10 && $flags != 0x50) {
+            die("unexpected adaptation flags $flags");
+        }
+
+        if ($flags & 0x10) {
+            # Random access 0x40 bit set
+            # PCF flag 0x10 set
+            $db->{PCR} = unpack("a6", $buf);
+        }
+
+        $buf = substr($buf,$len-1);
+    } else {
+        printf("    ");
+    }
+
+    if (defined($db->{PCR})) {
+        my $pcr;
+        for my $ch (split(//,$db->{PCR})) {
+            $pcr .= sprintf("%02x", ord($ch));
+        }
+        printf("PCR=%s ", $pcr);
+    } else {
+        print("                 ");
+    }
+
+    my @bytes = unpack('C22', $buf);
+    for my $i (@bytes) {
+        printf("%02x",$i);
+    }
+    print("\n");
+}
+
+sub main {
+    my $filename = $ARGV[0];
+    my $fh = IO::File->new($filename, "r");
+    if (!defined($fh)) {
+        die("open error");
+    }
+
+    # TODO: resync
+    # for now, just assume we are in sync
+    
+    while (!$fh->eof()) {
+        my $buf;
+        $fh->read($buf, 188);
+        handle_packet($buf);
+    }
+    
+}
+unless (caller) {
+    main();
+}
