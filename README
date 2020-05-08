@@ -53,3 +53,10 @@ Some example commands I have used for generating my test files:
     raspivid -o - -t 60000 -vf -hf -w 1280 -h 720 \
         -fps 25 -ih -g 25 >test.03.raspivid.out
 
+An example HLS streamer:
+
+    raspivid -t 0 -w 1280 -h 720 -fps 25 \
+    -o - | ffmpeg -nostats -loglevel 1 -i - \
+            -vcodec copy \
+            -f hls -hls_time 10 -hls_list_size 10 -hls_flags delete_segments \
+            /dev/shm/hls/movie.m3u8
