@@ -12,6 +12,138 @@ $Data::Dumper::Indent = 1;
 $Data::Dumper::Sortkeys = 1;
 $Data::Dumper::Quotekeys = 0;
 
+# Is this pid formatted as a PSI?
+my $pid_ispsi = {
+    0 => 1,
+};
+
+sub handle_pat {
+    my $db = shift;
+    my $buf = shift;
+
+    while( length($buf) >7 ) {
+        my ($program_number, $pid, $rest) = unpack('nna*', $buf);
+        $buf = $rest;
+        $pid = $pid & 0x1fff;
+        printf("PAT: program_number=0x%04x, PID=0x%04x\n",
+            $program_number,
+            $pid,
+        );
+        $pid_ispsi->{$pid} = 1;
+    }
+    if (length($buf) != 4) {
+        die("Length leaves no room for CRC");
+    }
+}
+
+sub handle_pmt {
+    my $db = shift;
+    my $buf = shift;
+
+    my ($PCR_PID, $program_info_length, $rest) = unpack('nna*', $buf);
+    $buf = $rest;
+
+    $db->{PCR_PID} = $PCR_PID & 0x1fff;
+    $program_info_length= $program_info_length & 0xfff;
+
+    # TODO: decode program_info descriptors
+    $buf = substr($buf, $program_info_length);
+
+    while( length($buf) >4 ) {
+        my ($stream_type, $pid, $es_info_len, $rest) = unpack('Cnna*', $buf);
+        $buf = $rest;
+
+        $pid = $pid & 0x1fff;
+
+        $es_info_len = $es_info_len & 0xfff;
+
+        # TODO: decode es info descriptors
+        $buf = substr($buf, $es_info_len);
+
+        printf("PMT stream_type=0x%02x, elementry_PID=0x%04x\n",
+            $stream_type,
+            $pid,
+        );
+    }
+
+    if (length($buf) != 4) {
+        print("\n");
+        die("Remainder length for CRC is not 4");
+    }
+
+}
+
+sub handle_section {
+    my $buf = shift;
+    my $db = {};
+
+    my $length;
+    my $rest;
+    ($db->{table_id}, $length, $rest) = unpack('Cna*', $buf);
+    $buf = $rest;
+
+    # $db->{section_syntax_indicator} = ($length & 0x8000) > 0;
+    # '0' = $length & 0x4000
+    # reserved = $length & 0x3000
+    $length = $length & 0xfff;
+    if ($length > length($buf)) {
+        die("section length too long");
+    }
+    $buf = substr($buf,0,$length);
+
+    my $ver;
+    ($db->{stream_id}, $ver, $db->{section_number}, $db->{last_section_number}, $rest) = unpack('nCCCa*', $buf);
+    $db->{version_number} = ($ver >> 1) & 0x1f;
+    $db->{current_next_indicator} = $ver & 1;
+    $buf = $rest;
+
+    printf("Section: TID=0x%02x, SID=0x%s, VER=0x%x(%s), nr=%i/%i\n",
+        $db->{table_id},
+        $db->{stream_id},
+        $db->{version_number}, $db->{current_next_indicator} ? "cur":"next",
+        $db->{section_number}, $db->{last_section_number},
+    );
+
+    if ($db->{table_id} == 0) {
+        handle_pat($db, $buf);
+    } elsif ($db->{table_id} == 0x2) {
+        handle_pmt($db, $buf);
+    } else {
+        print("                                    ");
+        my @bytes = unpack('C59', $buf);
+        for my $i (@bytes) {
+            printf("%02x",$i);
+        }
+        print("\n");
+    }
+}
+
+sub handle_payload {
+    my $pid = shift;
+    my $buf = shift;
+
+    if ($pid_ispsi->{$pid}) {
+        my ($offset, $rest) = unpack('Ca*', $buf);
+        $buf = $rest;
+
+        if ($offset != 0) {
+            die("Unhandled PSI offset byte");
+        }
+
+        handle_section($buf);
+        return;
+    }
+
+    # not PSI, just dump it..
+    print("\n");
+    print("                                    ");
+    my @bytes = unpack('C59', $buf);
+    for my $i (@bytes) {
+        printf("%02x",$i);
+    }
+    print("\n");
+}
+
 sub handle_packet {
     my $buf = shift;
     my $db = {};
@@ -69,11 +201,8 @@ sub handle_packet {
         print("                 ");
     }
 
-    my @bytes = unpack('C22', $buf);
-    for my $i (@bytes) {
-        printf("%02x",$i);
-    }
-    print("\n");
+    # TODO: if adaptation_flag says there is a payload
+    handle_payload($db->{pid},$buf);
 }
 
 sub main {
@@ -85,13 +214,13 @@ sub main {
 
     # TODO: resync
     # for now, just assume we are in sync
-    
+
     while (!$fh->eof()) {
         my $buf;
         $fh->read($buf, 188);
         handle_packet($buf);
     }
-    
+
 }
 unless (caller) {
     main();
