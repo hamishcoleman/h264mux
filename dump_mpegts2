@@ -27,19 +27,16 @@ sub descriptors_str {
     # there are heaps of descriptor types, so most of them are unimplemented
     my $s;
 
-    my $rest;
     my $tag;
     my $length;
 
-    ($tag, $length, $rest) = unpack('CCa*', $buf);
-    $buf = $rest;
+    ($tag, $length, $buf) = unpack('CCa*', $buf);
 
     $s .= sprintf("tag=%x ", $tag);
 
     if ($tag == 0x48) {
         my $service_type;
-        ($service_type, $length, $rest) = unpack('CCa*', $buf);
-        $buf = $rest;
+        ($service_type, $length, $buf) = unpack('CCa*', $buf);
 
         $s .= sprintf("service_type=%x provider=%s ",
             $service_type,
@@ -47,8 +44,7 @@ sub descriptors_str {
         );
         $buf = substr($buf, $length);
 
-        ($length, $rest) = unpack('Ca*', $buf);
-        $buf = $rest;
+        ($length, $buf) = unpack('Ca*', $buf);
         $s .= sprintf("name=%s ",
             substr($buf, 0, $length),
         );
@@ -70,8 +66,8 @@ sub handle_pat {
     my $buf = shift;
 
     while( length($buf) >7 ) {
-        my ($program_number, $pid, $rest) = unpack('nna*', $buf);
-        $buf = $rest;
+        my ($program_number, $pid);
+        ($program_number, $pid, $buf) = unpack('nna*', $buf);
         $pid = $pid & 0x1fff;
         printf("PAT: program_number=0x%04x, PID=0x%04x\n",
             $program_number,
@@ -89,17 +85,14 @@ sub handle_sdt {
     my $buf = shift;
 
     my $reserved;
-    my $rest;
-    ($db->{original_network_id}, $reserved, $rest) = unpack('nCa*', $buf);
-    $buf = $rest;
+    ($db->{original_network_id}, $reserved, $buf) = unpack('nCa*', $buf);
 
     printf("SDT: original_network_id=0x%04x\n", $db->{original_network_id});
 
     while( length($buf) >4 ) {
         my $service_id;
         my $descriptors_loop_len;
-        ($service_id, $reserved, $descriptors_loop_len, $rest) = unpack('nCna*', $buf);
-        $buf = $rest;
+        ($service_id, $reserved, $descriptors_loop_len, $buf) = unpack('nCna*', $buf);
 
         $descriptors_loop_len = $descriptors_loop_len & 0xfff;
 
@@ -119,8 +112,8 @@ sub handle_pmt {
     my $db = shift;
     my $buf = shift;
 
-    my ($PCR_PID, $program_info_length, $rest) = unpack('nna*', $buf);
-    $buf = $rest;
+    my ($PCR_PID, $program_info_length);
+    ($PCR_PID, $program_info_length, $buf) = unpack('nna*', $buf);
 
     $db->{PCR_PID} = $PCR_PID & 0x1fff;
     $program_info_length= $program_info_length & 0xfff;
@@ -129,8 +122,8 @@ sub handle_pmt {
     $buf = substr($buf, $program_info_length);
 
     while( length($buf) >4 ) {
-        my ($stream_type, $pid, $es_info_len, $rest) = unpack('Cnna*', $buf);
-        $buf = $rest;
+        my ($stream_type, $pid, $es_info_len);
+        ($stream_type, $pid, $es_info_len, $buf) = unpack('Cnna*', $buf);
 
         $pid = $pid & 0x1fff;
 
@@ -158,9 +151,7 @@ sub handle_section {
     my $db = {};
 
     my $length;
-    my $rest;
-    ($db->{table_id}, $length, $rest) = unpack('Cna*', $buf);
-    $buf = $rest;
+    ($db->{table_id}, $length, $buf) = unpack('Cna*', $buf);
 
     # $db->{section_syntax_indicator} = ($length & 0x8000) > 0;
     # '0' = $length & 0x4000
@@ -172,10 +163,9 @@ sub handle_section {
     $buf = substr($buf,0,$length);
 
     my $ver;
-    ($db->{stream_id}, $ver, $db->{section_number}, $db->{last_section_number}, $rest) = unpack('nCCCa*', $buf);
+    ($db->{stream_id}, $ver, $db->{section_number}, $db->{last_section_number}, $buf) = unpack('nCCCa*', $buf);
     $db->{version_number} = ($ver >> 1) & 0x1f;
     $db->{current_next_indicator} = $ver & 1;
-    $buf = $rest;
 
     printf("Section: TID=0x%02x, SID=0x%s, VER=0x%x(%s), nr=%i/%i\n",
         $db->{table_id},
@@ -218,8 +208,8 @@ sub handle_payload {
     my $buf = shift;
 
     if ($PUSI && $pid_ispsi->{$pid}) {
-        my ($offset, $rest) = unpack('Ca*', $buf);
-        $buf = $rest;
+        my $offset;
+        ($offset, $buf) = unpack('Ca*', $buf);
 
         if ($offset != 0) {
             die("Unhandled PSI offset byte");
@@ -243,8 +233,8 @@ sub handle_packet {
     my $buf = shift;
     my $db = {};
 
-    my ($sync, $pid_hi, $pid_lo, $cc, $rest) = unpack("C4a*",$buf);
-    $buf = $rest;
+    my ($sync, $pid_hi, $pid_lo, $cc);
+    ($sync, $pid_hi, $pid_lo, $cc, $buf) = unpack("C4a*",$buf);
 
     if ($sync != 0x47) {
         die("sync error");
@@ -266,8 +256,8 @@ sub handle_packet {
     printf("PKT:%s:%04x:%x ", $flags_pkt, $db->{pid}, $db->{counter});
 
     if ($db->{adaptation} >1) {
-        my ($len, $flags, $rest) = unpack("CCa*", $buf);
-        $buf = $rest;
+        my ($len, $flags);
+        ($len, $flags, $buf) = unpack("CCa*", $buf);
 
         printf("A%02x ",$len);
 
