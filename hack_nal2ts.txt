@@ -1,0 +1,71 @@
+Given a H.264 NAL stream from the raspivid software, wrap it with the
+appropriate TS framing, using the minimum of delay or fuss.
+
+Pseudocode to implement this:
+
+
+start:
+    byte[3] = read NAL byte
+    if EOF, stop
+    if byte[0,1,2] == 0x000001:
+        TS_new_NAL_packet(type=byte[3])
+    TS_write_NAL_byte(byte[0])
+    byte[0] = byte[1]
+    byte[1] = byte[2]
+    byte[2] = byte[3]
+    goto start
+
+TS_append_header(pid, pusi):
+    append TS header
+        set pid
+        if pusi:
+            set adaptation field control = 10b
+        else:
+            set adaptation field control = 01b
+        set cc = cc+1 mod 16
+
+
+TS_write_NAL_byte(byte):
+    if buffer empty:
+        TS_append_header(pid, pusi=False)
+
+    append byte to buffer
+    if buffer full:
+        output_TS_buffer()
+        reset buffer
+
+
+TS_new_NAL_packet(type):
+    if next is PES:
+        set next is PES = False
+        if buffer not empty:
+            set adaptation field control = 10b
+            copy buffer contents to end of buffer
+            insert adaptation field with padding
+        
+            output_TS_buffer()
+            reset buffer
+
+        output TS SDT
+        output TS PAT
+        output TS PMT
+
+        TS_append_header(pid, pusi=True)
+        if time since last PCR > threshold:
+            # at 25fps, threshold is every two frames
+            set adaptation field control = 10b
+            FIXME - calculate PCR
+                example looks to use:
+                    fixed extension = 0
+                    reserved = all ones
+                    33bit = PTS/2
+            append adaptation field with PCR
+            set time since last PCR = now()
+
+        calculate PTS as prev PTS + 1/framerate
+        append PES header (stream_id, PTS)
+
+        append NAL 09 F0
+    else:
+        if type == 5 or type == 1:
+            set next is PES = True
