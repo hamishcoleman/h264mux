@@ -60,3 +60,7 @@ An example HLS streamer:
             -vcodec copy \
             -f hls -hls_time 10 -hls_list_size 10 -hls_flags delete_segments \
             /dev/shm/hls/movie.m3u8
+
+References:
+- DVB ETSI EN 300 468
+- ISO13818-1

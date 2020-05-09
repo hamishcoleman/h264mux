@@ -15,7 +15,55 @@ $Data::Dumper::Quotekeys = 0;
 # Is this pid formatted as a PSI?
 my $pid_ispsi = {
     0 => 1,
+    0x11 => 1,
 };
+
+# Is this pid formatted as an Element Stream
+my $pid_ises = {
+};
+
+sub descriptors_str {
+    my $buf = shift;
+    # there are heaps of descriptor types, so most of them are unimplemented
+    my $s;
+
+    my $rest;
+    my $tag;
+    my $length;
+
+    ($tag, $length, $rest) = unpack('CCa*', $buf);
+    $buf = $rest;
+
+    $s .= sprintf("tag=%x ", $tag);
+
+    if ($tag == 0x48) {
+        my $service_type;
+        ($service_type, $length, $rest) = unpack('CCa*', $buf);
+        $buf = $rest;
+
+        $s .= sprintf("service_type=%x provider=%s ",
+            $service_type,
+            substr($buf, 0, $length),
+        );
+        $buf = substr($buf, $length);
+
+        ($length, $rest) = unpack('Ca*', $buf);
+        $buf = $rest;
+        $s .= sprintf("name=%s ",
+            substr($buf, 0, $length),
+        );
+        $buf = substr($buf, $length);
+    } else {
+        ...
+    }
+
+    if (length($buf) >2) {
+        # There is more descriptors
+        ...
+        # could recurse descriptors_str($buf)
+    }
+    return $s;
+}
 
 sub handle_pat {
     my $db = shift;
@@ -31,6 +79,37 @@ sub handle_pat {
         );
         $pid_ispsi->{$pid} = 1;
     }
+    if (length($buf) != 4) {
+        die("Length leaves no room for CRC");
+    }
+}
+
+sub handle_sdt {
+    my $db = shift;
+    my $buf = shift;
+
+    my $reserved;
+    my $rest;
+    ($db->{original_network_id}, $reserved, $rest) = unpack('nCa*', $buf);
+    $buf = $rest;
+
+    printf("SDT: original_network_id=0x%04x\n", $db->{original_network_id});
+
+    while( length($buf) >4 ) {
+        my $service_id;
+        my $descriptors_loop_len;
+        ($service_id, $reserved, $descriptors_loop_len, $rest) = unpack('nCna*', $buf);
+        $buf = $rest;
+
+        $descriptors_loop_len = $descriptors_loop_len & 0xfff;
+
+        printf("SDT: service_id=0x%04x %s\n",
+            $service_id,
+            descriptors_str(substr($buf, 0, $descriptors_loop_len)),
+        );
+        $buf = substr($buf, $descriptors_loop_len);
+    }
+
     if (length($buf) != 4) {
         die("Length leaves no room for CRC");
     }
@@ -64,6 +143,7 @@ sub handle_pmt {
             $stream_type,
             $pid,
         );
+        $pid_ises->{$pid} = 1;
     }
 
     if (length($buf) != 4) {
@@ -108,6 +188,8 @@ sub handle_section {
         handle_pat($db, $buf);
     } elsif ($db->{table_id} == 0x2) {
         handle_pmt($db, $buf);
+    } elsif ($db->{table_id} == 0x42) {
+        handle_sdt($db, $buf);
     } else {
         print("                                    ");
         my @bytes = unpack('C59', $buf);
@@ -118,11 +200,24 @@ sub handle_section {
     }
 }
 
+sub handle_es {
+    my $buf = shift;
+
+    print("\n");
+        print("                                    ");
+        my @bytes = unpack('C16', $buf);
+        for my $i (@bytes) {
+            printf("%02x ",$i);
+        }
+        print("\n");
+}
+
 sub handle_payload {
+    my $PUSI = shift;
     my $pid = shift;
     my $buf = shift;
 
-    if ($pid_ispsi->{$pid}) {
+    if ($PUSI && $pid_ispsi->{$pid}) {
         my ($offset, $rest) = unpack('Ca*', $buf);
         $buf = $rest;
 
@@ -155,15 +250,19 @@ sub handle_packet {
         die("sync error");
     }
 
-    $db->{TEI} = ($pid_hi & 0x80) ? "T":" ";
-    $db->{PUSI} = ($pid_hi & 0x40) ? "P":" ";
-    $db->{pri} = ($pid_hi & 0x20) ? "U":" ";
+    $db->{TEI} = ($pid_hi & 0x80);
+    $db->{PUSI} = ($pid_hi & 0x40);
+    $db->{pri} = ($pid_hi & 0x20);
     $db->{pid} = (($pid_hi & 0x1f) <<8) | $pid_lo;
     #$db->{TSC} = ($cc & 0xc0) >> 6;
     $db->{adaptation} = ($cc & 0x30) >> 4;
     $db->{counter} = ($cc & 0xf);
 
-    my $flags_pkt = $db->{TEI}.$db->{PUSI}.$db->{pri};
+    my $flags_pkt = sprintf("%s%s%s",
+        $db->{TEI} ? "T":" ",
+        $db->{PUSI} ?"P":" ",
+        $db->{pri} ? "U":" ",
+    );
     printf("PKT:%s:%04x:%x ", $flags_pkt, $db->{pid}, $db->{counter});
 
     if ($db->{adaptation} >1) {
@@ -202,7 +301,7 @@ sub handle_packet {
     }
 
     # TODO: if adaptation_flag says there is a payload
-    handle_payload($db->{pid},$buf);
+    handle_payload($db->{PUSI}, $db->{pid}, $buf);
 }
 
 sub main {
