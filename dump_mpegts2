@@ -301,26 +301,30 @@ sub handle_packet {
     printf("PKT:%s:%04x:%x ", $flags_pkt, $db->{pid}, $db->{counter});
 
     if ($db->{adaptation} >1) {
-        my ($len, $flags);
-        ($len, $flags, $buf) = unpack("CCa*", $buf);
+        my $len;
+        ($len, $buf) = unpack("Ca*", $buf);
 
         printf("A%02x ",$len);
 
-        if ($len < 1) {
-            die("unexpected adaptation length");
-        }
+        # TODO: if len > length(buf), die ?
 
-        if ($flags != 0 && $flags != 0x10 && $flags != 0x50) {
-            die("unexpected adaptation flags $flags");
-        }
+        if ($len > 0) {
+            my $flags;
+            ($flags, $buf) = unpack("Ca*", $buf);
 
-        if ($flags & 0x10) {
+            if ($flags != 0 && $flags != 0x10 && $flags != 0x50) {
+                die("unexpected adaptation flags $flags");
+            }
+
             # Random access 0x40 bit set
             # PCF flag 0x10 set
-            $db->{PCR} = unpack("a6", $buf);
-        }
 
-        $buf = substr($buf,$len-1);
+            if ($flags & 0x10) {
+                $db->{PCR} = unpack("a6", $buf);
+            }
+
+            $buf = substr($buf,$len-1);
+        }
     } else {
         printf("    ");
     }
