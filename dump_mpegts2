@@ -69,7 +69,7 @@ sub handle_pat {
         my ($program_number, $pid);
         ($program_number, $pid, $buf) = unpack('nna*', $buf);
         $pid = $pid & 0x1fff;
-        printf("PAT: program_number=0x%04x, PID=0x%04x\n",
+        printf("  PAT: program_number=0x%04x, PID=0x%04x\n",
             $program_number,
             $pid,
         );
@@ -87,7 +87,7 @@ sub handle_sdt {
     my $reserved;
     ($db->{original_network_id}, $reserved, $buf) = unpack('nCa*', $buf);
 
-    printf("SDT: original_network_id=0x%04x\n", $db->{original_network_id});
+    printf("  SDT: original_network_id=0x%04x\n", $db->{original_network_id});
 
     while( length($buf) >4 ) {
         my $service_id;
@@ -96,7 +96,7 @@ sub handle_sdt {
 
         $descriptors_loop_len = $descriptors_loop_len & 0xfff;
 
-        printf("SDT: service_id=0x%04x %s\n",
+        printf("    SDT: service_id=0x%04x %s\n",
             $service_id,
             descriptors_str(substr($buf, 0, $descriptors_loop_len)),
         );
@@ -132,7 +132,7 @@ sub handle_pmt {
         # TODO: decode es info descriptors
         $buf = substr($buf, $es_info_len);
 
-        printf("PMT stream_type=0x%02x, elementry_PID=0x%04x\n",
+        printf("  PMT: stream_type=0x%02x, elementry_PID=0x%04x\n",
             $stream_type,
             $pid,
         );
