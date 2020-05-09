@@ -19,7 +19,7 @@ my $pid_ispsi = {
 };
 
 # Is this pid formatted as an Element Stream
-my $pid_ises = {
+my $pid_ispes = {
 };
 
 sub descriptors_str {
@@ -136,7 +136,7 @@ sub handle_pmt {
             $stream_type,
             $pid,
         );
-        $pid_ises->{$pid} = 1;
+        $pid_ispes->{$pid} = 1;
     }
 
     if (length($buf) != 4) {
@@ -190,12 +190,52 @@ sub handle_section {
     }
 }
 
-sub handle_es {
+sub handle_pes {
     my $buf = shift;
 
-    print("\n");
+    my $start_code;
+    my $pes_packet_length;
+    my $flags;
+    my $pes_header_data_length;
+
+    ($start_code, $pes_packet_length, $flags, $pes_header_data_length, $buf) = unpack('NnnCa*', $buf);
+    my $stream_id = $start_code & 0xff;
+    $start_code = $start_code & 0xffffff00;
+
+    if ($start_code != 0x00000100) {
+        die("Unexpected start code");
+    }
+
+    # pes packet length zero means a 'streaming' stream..
+    if ($pes_packet_length != 0) {
+        ...
+    }
+
+    if ($flags != 0x8080) {
+        ...
+    }
+
+    if ($pes_header_data_length != 5) {
+        ...
+    }
+
+    # pts/dts = flags & 0x00c0
+    # if pts/dts == 10b then we just have a 5 byte PTS field
+
+    my ($pts1, $pts2, $pts3);
+    ($pts1, $pts2, $pts3, $buf) = unpack('Cnna*', $buf);
+
+    my $pts = ($pts1 & 0x0e) >> 1 << 30 |
+              ($pts2 & 0xfffe) >> 1 << 15 |
+              ($pts3 & 0xfffe) >> 1;
+
+    printf("stream_id=0x%x PTS=%x\n",
+        $stream_id,
+        $pts,
+    );
+
         print("                                    ");
-        my @bytes = unpack('C16', $buf);
+        my @bytes = unpack('C24', $buf);
         for my $i (@bytes) {
             printf("%02x ",$i);
         }
@@ -219,7 +259,12 @@ sub handle_payload {
         return;
     }
 
-    # not PSI, just dump it..
+    if ($PUSI && $pid_ispes->{$pid}) {
+       handle_pes($buf);
+       return;
+    }
+
+    # not the start of something we can decode, so just dump it
     print("\n");
     print("                                    ");
     my @bytes = unpack('C59', $buf);
